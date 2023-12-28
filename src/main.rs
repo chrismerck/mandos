@@ -72,8 +72,6 @@ impl Map {
   fn generate(&mut self, rng: &mut impl Rng) {
     let room_count = rng.gen_range(3..10);
     let mut rooms = Vec::new();
-    // loop up to 100 times,
-    // trying to create room_count rooms.
     for _ in 0..100 {
       let room = Rect::random(5, 13, 3, 9, rng);
       let mut ok = true;
@@ -91,6 +89,29 @@ impl Map {
         break;
       }
     }
+
+    // connect rooms with corridors
+    for i in 0..rooms.len() - 1 {
+      let (cx1, cy1) = rooms[i].center();
+      let (cx2, cy2) = rooms[i + 1].center();
+      let (mut x, mut y) = (cx1, cy1);
+      while !(x == cx2 && y == cy2) {
+        if x != cx2 && y != cy2 {
+          if rng.gen_bool(0.5) {
+            x += if x < cx2 { 1 } else { -1 };
+          } else {
+            y += if y < cy2 { 1 } else { -1 };
+          }
+        } else if x != cx2 {
+          x += if x < cx2 { 1 } else { -1 };
+        } else {
+          y += if y < cy2 { 1 } else { -1 };
+        }
+        let idx = y as usize * MAP_WIDTH + x as usize;
+        self.tiles[idx].tile_type = TileType::Floor;
+      }
+    }
+
   }
 
   fn create_room(&mut self, room: &Rect) {

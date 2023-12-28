@@ -2,6 +2,7 @@
 const MAP_WIDTH: usize = 72;
 const MAP_HEIGHT: usize = 17;
 
+#[derive(Copy, Clone, PartialEq)]
 enum TileType {
   Wall,
   Floor,
@@ -25,11 +26,13 @@ impl Rect {
     Rect { l, t, w, h }
   }
 
-  fn random(min_size: i32, max_size: i32, rng: &mut impl Rng) -> Self {
-    let w = rng.gen_range(min_size..max_size);
-    let h = rng.gen_range(min_size..max_size);
-    let l = rng.gen_range(0..MAP_WIDTH as i32 - w);
-    let t = rng.gen_range(0..MAP_HEIGHT as i32 - h);
+  fn random(min_width: i32, max_width: i32,
+            min_height: i32, max_height: i32,
+            rng: &mut impl Rng) -> Self {
+    let w = rng.gen_range(min_width..max_width);
+    let h = rng.gen_range(min_height..max_height);
+    let l = rng.gen_range(1..MAP_WIDTH as i32 - w - 1);
+    let t = rng.gen_range(1..MAP_HEIGHT as i32 - h - 1);
     Rect { l, t, w, h }
   }
 
@@ -72,7 +75,7 @@ impl Map {
     // loop up to 100 times,
     // trying to create room_count rooms.
     for _ in 0..100 {
-      let room = Rect::random(5, 10, rng);
+      let room = Rect::random(5, 13, 3, 9, rng);
       let mut ok = true;
       for other in &rooms {
         if room.intersect(other) {
@@ -103,9 +106,29 @@ impl Map {
     for y in 0..MAP_HEIGHT {
       for x in 0..MAP_WIDTH {
         let tile = &self.tiles[y * MAP_WIDTH + x];
-        match tile.tile_type {
-          TileType::Floor => print!("."),
-          TileType::Wall => print!("#"),
+        if tile.tile_type == TileType::Floor {
+          print!(".");
+        } else {
+          // check if any neighboring tile is a floor
+          let mut visibile = false;
+          for dy in -1..=1 {
+            for dx in -1..=1 {
+              let xx = x as i32 + dx;
+              let yy = y as i32 + dy;
+              if xx >= 0 && xx < MAP_WIDTH as i32 &&
+                 yy >= 0 && yy < MAP_HEIGHT as i32 {
+                let idx = yy as usize * MAP_WIDTH + xx as usize;
+                if self.tiles[idx].tile_type == TileType::Floor {
+                  visibile = true;
+                }
+              }
+            }
+          }
+          if visibile {
+            print!("#");
+          } else {
+            print!(" ");
+          }
         }
       }
       print!("\n");

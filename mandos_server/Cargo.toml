@@ -1,0 +1,14 @@
+[package]
+name = "mandos_server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+mandos_common = { path = "../mandos_common" }
+tokio = { version = "1.12.0", features = ["full"] }
+serde = { version = "1.0.130", features = ["derive"] }
+tokio-util = { version = "0.6.8", features = ["codec"] }
+tokio-serde = { version = "0.8.0", features = ["json"] }
+futures = "0.3.29"

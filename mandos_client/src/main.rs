@@ -4,14 +4,19 @@ extern crate serde;
 extern crate tokio;
 extern crate tokio_serde;
 extern crate tokio_util;
+extern crate futures;
 
 use mandos_common::Screen;
 use termion::{color, style};
 use std::io::{self, Write};
 use serde::{Serialize, Deserialize};
 use tokio::net::TcpStream;
-use tokio_util::codec::{FramedRead, LengthDelimitedCodec};
-use futures::StreamExt;
+use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
+use futures::prelude::*;
+use termion::input::TermRead;
+use termion::event::Key;
+use std::io;
+use mandos_common::Screen;
 
 fn print_screen(screen: &Screen) {
     println!("{}", termion::clear::All);
@@ -33,58 +38,40 @@ fn print_screen(screen: &Screen) {
     io::stdout().flush().unwrap();
 }
 
+
 #[tokio::main]
-pub async fn main() {
-    let socket = TcpStream::connect("127.0.0.1:8880").await.unwrap();
+pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let socket = TcpStream::connect("127.0.0.1:8880").await?;
 
-    let lendth_delimited = FramedRead::new(socket, LengthDelimitedCodec::new());
+    let (r, w) = socket.split();
 
+    let length_delimited_read = FramedRead::new(r, LengthDelimitedCodec::new());
     let mut deserialized = tokio_serde::SymmetricallyFramed::new(
-        lendth_delimited, 
-        tokio_serde::formats::SymmetricalJson::<Screen>::default()
+        length_delimited_read,
+        tokio_serde::formats::SymmetricalJson::<Screen>::default(),
     );
 
+    let length_delimited_write = FramedWrite::new(w, LengthDelimitedCodec::new());
+    let mut serialized = tokio_serde::SymmetricallyFramed::new(
+        length_delimited_write,
+        tokio_serde::formats::SymmetricalJson::<Key>::default(),
+    );
+
+    // Spawn a task to read keycodes and send them to the server
+    tokio::spawn(async move {
+        let stdin = io::stdin();
+        for c in stdin.keys() {
+            let keycode = c.unwrap();
+            println!("Sending: {:?}", keycode);
+            serialized.send(keycode).await.unwrap();
+        }
+    });
+
+    // Handle incoming screens
     while let Some(screen) = deserialized.next().await {
+        // Assuming print_screen is a function that takes a Screen and prints it
         print_screen(&screen.unwrap());
     }
 
-        /*
-    // get terminal size
-    let mut screen = Screen::new((80, 24));
-
-    // draw screen 10 times with 0.1 second delay
-    for i in 0..10 {
-        print_screen(&screen);
-        screen.tiles[10 * i as usize].c = '0';
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-
-    println!("{}Red", color::Fg(color::Red));
-    println!("{}Blue", color::Fg(color::Blue));
-    println!("{}Cyan", color::Fg(color::Cyan));
-    println!("{}Yellow", color::Fg(color::Yellow));
-    println!("{}Green", color::Fg(color::Green));
-    println!("{}Magenta", color::Fg(color::Magenta));
-    println!("{}White", color::Fg(color::White));
-    // white + bold
-    println!("{}{}Bold", style::Bold, color::Fg(color::White));
-    // bold off
-    println!("{}", style::Reset);
-    // lightblack
-    println!("{}LightBlack", color::Fg(color::LightBlack));
-    // lightblue
-    println!("{}LightBlue", color::Fg(color::LightBlue));
-    // lightcyan
-    println!("{}LightCyan", color::Fg(color::LightCyan));
-    // lightgreen
-    println!("{}LightGreen", color::Fg(color::LightGreen));
-    // lightmagenta
-    println!("{}LightMagenta", color::Fg(color::LightMagenta));
-    // lightred
-    println!("{}LightRed", color::Fg(color::LightRed));
-    // lightyellow
-    println!("{}LightYellow", color::Fg(color::LightYellow));
-    // light white
-    println!("{}LightWhite", color::Fg(color::LightWhite));
-    */
+    Ok(())
 }

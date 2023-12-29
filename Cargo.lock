@@ -276,6 +276,7 @@ dependencies = [
  "futures",
  "mandos_common",
  "serde",
+ "termion",
  "tokio",
  "tokio-serde",
  "tokio-util",

@@ -51,3 +51,11 @@ For learning modern game machinics, I'm following this tutorial on building a ro
 
 https://bfnightly.bracketproductions.com/chapter_2.html
 
+### Networking
+
+I've managed to send a Screen object from server to client using tokio_serde.
+
+I'm currently battling with the trait system trying to get keycodes (termion::event::Key)
+sent from client to server. 
+
+Getting close to having the networking basically done!

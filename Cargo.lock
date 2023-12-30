@@ -267,6 +267,7 @@ dependencies = [
  "pancurses",
  "rand",
  "serde",
+ "termion",
 ]
 
 [[package]]

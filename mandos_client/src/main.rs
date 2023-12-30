@@ -6,7 +6,7 @@ extern crate tokio_serde;
 extern crate tokio_util;
 extern crate futures;
 
-use mandos_common::Screen;
+use mandos_common::{Screen, KeyCode};
 use termion::{color, style};
 use std::io::{self, Write};
 use serde::{Serialize, Deserialize};
@@ -15,8 +15,8 @@ use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
 use futures::prelude::*;
 use termion::input::TermRead;
 use termion::event::Key;
-use std::io;
-use mandos_common::Screen;
+use termion::raw::IntoRawMode;
+use tokio::sync::mpsc;
 
 fn print_screen(screen: &Screen) {
     println!("{}", termion::clear::All);
@@ -41,37 +41,59 @@ fn print_screen(screen: &Screen) {
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let socket = TcpStream::connect("127.0.0.1:8880").await?;
+    let stdout = io::stdout().into_raw_mode()?;
 
+    let (key_tx, mut key_rx) = mpsc::channel(2);
+
+    let mut socket = TcpStream::connect("127.0.0.1:8880").await?;
     let (r, w) = socket.split();
 
-    let length_delimited_read = FramedRead::new(r, LengthDelimitedCodec::new());
     let mut deserialized = tokio_serde::SymmetricallyFramed::new(
-        length_delimited_read,
+        FramedRead::new(r, LengthDelimitedCodec::new()),
         tokio_serde::formats::SymmetricalJson::<Screen>::default(),
     );
 
-    let length_delimited_write = FramedWrite::new(w, LengthDelimitedCodec::new());
     let mut serialized = tokio_serde::SymmetricallyFramed::new(
-        length_delimited_write,
-        tokio_serde::formats::SymmetricalJson::<Key>::default(),
+        FramedWrite::new(w, LengthDelimitedCodec::new()),
+        tokio_serde::formats::SymmetricalJson::<KeyCode>::default(),
     );
 
-    // Spawn a task to read keycodes and send them to the server
     tokio::spawn(async move {
         let stdin = io::stdin();
-        for c in stdin.keys() {
-            let keycode = c.unwrap();
+        for key in stdin.keys() {
+            let key = key.unwrap();
+            match key {
+                Key::Ctrl('c') => {
+                    // clear screen and print goodbye message
+                    println!("{}{}Goodbye!{}", termion::clear::All, termion::cursor::Goto(1, 1), termion::cursor::Show);
+                    // reset terminal
+                    drop(stdout);
+                    // exit
+                    std::process::exit(0);
+                }
+                _ => {}
+            }
+            let keycode = KeyCode::from_key(key);
             println!("Sending: {:?}", keycode);
-            serialized.send(keycode).await.unwrap();
+            key_tx.send(keycode).await.unwrap();
         }
     });
 
-    // Handle incoming screens
-    while let Some(screen) = deserialized.next().await {
-        // Assuming print_screen is a function that takes a Screen and prints it
-        print_screen(&screen.unwrap());
-    }
+    let read_task = async {
+        println!("Waiting for screen");
+        while let Some(screen) = deserialized.next().await {
+            println!("Received screen");
+            print_screen(&screen.unwrap());
+        }
+    };
+
+    let write_task = async {
+        while let Some(keycode) = key_rx.recv().await {
+            serialized.send(keycode).await.unwrap();
+        }
+    };
+
+    tokio::join!(read_task, write_task);
 
     Ok(())
 }

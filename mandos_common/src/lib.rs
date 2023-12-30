@@ -1,5 +1,6 @@
 
 use serde::{Serialize, Deserialize};
+use termion::event::Key;
 
 #[derive(Serialize, Deserialize)]
 pub struct ScreenTile {
@@ -16,16 +17,38 @@ impl Screen {
     pub fn new(size: (u16, u16)) -> Self {
         let mut tiles = Vec::new();
         for _ in 0..size.0 * size.1 {
-            tiles.push(ScreenTile { c: '#' });
+            tiles.push(ScreenTile { c: '.' });
         }
         Screen { size, tiles }
     }
+}
 
+#[derive(Serialize, Deserialize, Debug)]
+pub enum KeyCode {
+    Up,
+    Down,
+    Left,
+    Right,
+    Char(char),
+    Unknown,
+}
+
+impl KeyCode {
+    pub fn from_key(key: Key) -> Self {
+        match key {
+            Key::Up => KeyCode::Up,
+            Key::Down => KeyCode::Down,
+            Key::Left => KeyCode::Left,
+            Key::Right => KeyCode::Right,
+            Key::Char(c) => KeyCode::Char(c),
+            _ => KeyCode::Unknown,
+        }
+    }
 }
 
 
-const MAP_WIDTH: usize = 72;
-const MAP_HEIGHT: usize = 17;
+pub const MAP_WIDTH: usize = 72;
+pub const MAP_HEIGHT: usize = 17;
 
 
 

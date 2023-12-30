@@ -5,7 +5,7 @@ extern crate tokio_util;
 extern crate futures;
 extern crate termion;
 
-use mandos_common::{Map, Screen, ScreenTile, KeyCode, MAP_HEIGHT, MAP_WIDTH};
+use mandos_common::{Map, Screen, ScreenTile, TileType, KeyCode, MAP_HEIGHT, MAP_WIDTH};
 use tokio::net::TcpListener;
 use tokio_serde::formats::*;
 use tokio_util::codec::{FramedRead, FramedWrite, LengthDelimitedCodec};
@@ -38,10 +38,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 SymmetricalJson::<Screen>::default()
             );
 
-            let (mut pc_x, mut pc_y) = (MAP_WIDTH / 2, MAP_HEIGHT / 2);
+            let (mut pc_x, mut pc_y) = (0, 0);
+            // put pc in a random spot on the map that isn't a wall
+            loop {
+                let mut rng = rand::thread_rng();
+                pc_x = rng.gen_range(0..MAP_WIDTH);
+                pc_y = rng.gen_range(0..MAP_HEIGHT);
+                if map.tiles[pc_y * MAP_WIDTH + pc_x].tile_type == TileType::Floor {
+                    break;
+                }
+            }
 
             while let Some(keycode_result) = deserialized.next().await {
-                let screen = Screen::new_from_map(&map);
+                let mut screen = Screen::new_from_map(&map);
                 match keycode_result {
                     Ok(keycode) => {
                         println!("Received: {:?}", keycode);
@@ -52,6 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                             KeyCode::Right => pc_x += 1,
                             _ => (),
                         }
+                        // put pc on the screen
+                        screen.tiles[pc_y * MAP_WIDTH + pc_x].c = '@';
                         serialized.send(screen).await.unwrap();
                         println!("Sent screen");
                     },

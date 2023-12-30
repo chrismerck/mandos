@@ -75,7 +75,7 @@ pub enum TileType {
 }
 
 pub struct Tile {
-  tile_type: TileType,
+  pub tile_type: TileType,
 }
 
 struct Rect {
@@ -121,7 +121,7 @@ struct Room {
 }
 
 pub struct Map {
-  tiles: [Tile; MAP_WIDTH * MAP_HEIGHT],
+  pub tiles: [Tile; MAP_WIDTH * MAP_HEIGHT],
   rooms: Vec<Room>,
 }
 

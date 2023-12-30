@@ -45,7 +45,16 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (key_tx, mut key_rx) = mpsc::channel(2);
 
-    let mut socket = TcpStream::connect("127.0.0.1:8880").await?;
+    //let mut socket = TcpStream::connect("127.0.0.1:8880").await?;
+    // get host ip and port from command line (default to localhost:8880)
+    let mut args = std::env::args();
+    args.next();
+    let host = args.next().unwrap_or("127.0.0.1".to_string());
+    let port = args.next().unwrap_or("8880".to_string());
+    let addr = format!("{}:{}", host, port);
+    println!("Connecting to {}", addr);
+    let mut socket = TcpStream::connect(addr).await?;
+
     let (r, w) = socket.split();
 
     let mut deserialized = tokio_serde::SymmetricallyFramed::new(

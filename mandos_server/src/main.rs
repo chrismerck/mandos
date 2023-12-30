@@ -15,8 +15,7 @@ use rand::Rng;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let listener = TcpListener::bind("127.0.0.1:8880").await?;
-
+    let listener = TcpListener::bind("0.0.0.0:8880").await?;
 
     loop {
         let (mut socket, _) = listener.accept().await?;

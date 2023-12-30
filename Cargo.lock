@@ -276,6 +276,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "mandos_common",
+ "rand",
  "serde",
  "termion",
  "tokio",

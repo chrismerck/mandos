@@ -21,6 +21,21 @@ impl Screen {
         }
         Screen { size, tiles }
     }
+
+    pub fn new_from_map(map: &Map) -> Self {
+        let mut tiles = Vec::new();
+        for y in 0..MAP_HEIGHT {
+            for x in 0..MAP_WIDTH {
+                let tile = &map.tiles[y * MAP_WIDTH + x];
+                let c = match tile.tile_type {
+                    TileType::Floor => '.',
+                    TileType::Wall => '#',
+                };
+                tiles.push(ScreenTile { c });
+            }
+        }
+        Screen { size: (MAP_WIDTH as u16, MAP_HEIGHT as u16), tiles }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -54,12 +69,12 @@ pub const MAP_HEIGHT: usize = 17;
 
 
 #[derive(Copy, Clone, PartialEq)]
-enum TileType {
+pub enum TileType {
   Wall,
   Floor,
 }
 
-struct Tile {
+pub struct Tile {
   tile_type: TileType,
 }
 
@@ -105,13 +120,13 @@ struct Room {
   rect: Rect,
 }
 
-struct Map {
+pub struct Map {
   tiles: [Tile; MAP_WIDTH * MAP_HEIGHT],
   rooms: Vec<Room>,
 }
 
 impl Map {
-  fn new() -> Self {
+  pub fn new() -> Self {
     Map {
       tiles : std::array::from_fn(|_i| {
         Tile { tile_type: TileType::Wall }
@@ -120,7 +135,7 @@ impl Map {
     }
   }
 
-  fn generate(&mut self, rng: &mut impl Rng) {
+  pub fn generate(&mut self, rng: &mut impl Rng) {
     let room_count = rng.gen_range(3..10);
     let mut rooms = Vec::new();
     for _ in 0..100 {

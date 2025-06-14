@@ -1,0 +1,32 @@
+{
+  "name": "mandos2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node run.js",
+    "dev": "tsx src/index.tsx",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@types/react": "^19.1.8",
+    "ink": "^6.0.0",
+    "react": "^19.1.0",
+    "typescript": "^5.8.3"
+  },
+  "devDependencies": {
+    "@types/ink": "^0.5.2",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^24.0.1",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.3"
+  }
+}

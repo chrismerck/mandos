@@ -5,12 +5,16 @@ import { Position } from '../components/Position.js';
 import { Renderable } from '../components/Renderable.js';
 import { getTerrainStyle, TerrainStyle } from './TerrainColors.js';
 import { StyledTile } from '../components/MapDisplay.js';
+import { MountainData } from '../MountainData.js';
 
 export class RenderSystem extends System {
   private renderedMap: string[][] = [];
   private styledMap: StyledTile[][] = [];
 
-  constructor(private viewportSystem: ViewportSystem) {
+  constructor(
+    private viewportSystem: ViewportSystem,
+    private mountainData: MountainData
+  ) {
     super();
   }
 
@@ -19,20 +23,36 @@ export class RenderSystem extends System {
     this.renderedMap = this.viewportSystem.getViewport().map(row => [...row]);
     
     // Create styled map from terrain
-    this.styledMap = this.renderedMap.map(row => 
-      row.map(char => ({
-        char,
-        style: getTerrainStyle(char)
-      }))
-    );
-    
-    // Overlay entities with Position and Renderable components
-    const renderableEntities = world.getEntitiesWithComponent('Renderable');
     const viewportCenter = this.viewportSystem.getCenter();
     const viewWidth = this.renderedMap[0]?.length || 0;
     const viewHeight = this.renderedMap.length;
     const halfWidth = Math.floor(viewWidth / 2);
     const halfHeight = Math.floor(viewHeight / 2);
+    
+    this.styledMap = this.renderedMap.map((row, viewY) => 
+      row.map((char, viewX) => {
+        // Calculate world position
+        const worldX = viewportCenter.x - halfWidth + viewX;
+        const worldY = viewportCenter.y - halfHeight + viewY;
+        
+        // Get base style
+        let style = getTerrainStyle(char);
+        
+        // Special handling for mountains based on depth
+        if (char === '^') {
+          if (this.mountainData.isDeepMountain(worldX, worldY)) {
+            // Deep mountains are bold white
+            style = { color: 'white', bold: true };
+          }
+          // Edge mountains keep the default gray color
+        }
+        
+        return { char, style };
+      })
+    );
+    
+    // Overlay entities with Position and Renderable components
+    const renderableEntities = world.getEntitiesWithComponent('Renderable');
 
     for (const entity of renderableEntities) {
       const position = entity.getComponent<Position>('Position');

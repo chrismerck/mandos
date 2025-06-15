@@ -18,6 +18,9 @@ export const TERRAIN_COLORS: Record<string, TerrainStyle> = {
   // Mountains
   '^': { color: 'gray' },
   
+  // Hills (brown)
+  '~': { color: 'yellow' }, // yellow is closest to brown in standard terminal colors
+  
   // Forest
   '&': { color: 'green' },
   

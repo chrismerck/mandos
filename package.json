@@ -10,7 +10,9 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "preprocess-map": "python3 scripts/map_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_regions.bin maps/middle_earth_pois.csv",
-    "prebuild": "npm run preprocess-map"
+    "preprocess-mountains": "python3 scripts/mountain_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_mountains.bin", 
+    "preprocess": "npm run preprocess-map && npm run preprocess-mountains",
+    "prebuild": "npm run preprocess"
   },
   "keywords": [],
   "author": "",

@@ -5,11 +5,13 @@ import { Movable } from '../components/Movable.js';
 import { Player } from '../components/Player.js';
 import { InputSystem } from './InputSystem.js';
 import { MapData } from '../MapData.js';
+import { MountainData } from '../MountainData.js';
 
 export class MovementSystem extends System {
   constructor(
     private inputSystem: InputSystem,
-    private mapData: MapData
+    private mapData: MapData,
+    private mountainData: MountainData
   ) {
     super();
   }
@@ -76,10 +78,20 @@ export class MovementSystem extends System {
       return false;
     }
 
-    // Check terrain (can't walk on water or mountains)
+    // Check terrain
     const tile = this.mapData.getTile(x, y);
-    const impassableTerrain = ['~', '^', '='];
     
-    return !impassableTerrain.includes(tile);
+    // Water is always impassable
+    if (tile === '=') {
+      return false;
+    }
+    
+    // Mountains are passable only if they're edge mountains (depth < 4)
+    if (tile === '^') {
+      return !this.mountainData.isDeepMountain(x, y);
+    }
+    
+    // All other terrain is passable
+    return true;
   }
 }

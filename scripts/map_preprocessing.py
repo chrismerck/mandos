@@ -91,6 +91,7 @@ def build_cost_grid(grid, water_mask, H, W):
                 cost[r,c]=TERRAIN_COST.get(grid[r][c],1)
     return cost
 
+
 # ---------------- Multi-source Dijkstra ----------------
 def multi_dijkstra(seeds, cost, H, W, restrict=None):
     dist=np.full((H,W),np.inf)

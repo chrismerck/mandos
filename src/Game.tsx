@@ -8,6 +8,7 @@ import { useInputSystem } from './hooks/useInputSystem.js';
 import { MovementSystem } from './systems/MovementSystem.js';
 import { MapData } from './MapData.js';
 import { RegionData } from './RegionData.js';
+import { MountainData } from './MountainData.js';
 import { Position } from './components/Position.js';
 import { Renderable } from './components/Renderable.js';
 import { Player } from './components/Player.js';
@@ -23,10 +24,11 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   const [world] = useState(() => new World());
   const [mapData] = useState(() => new MapData());
   const [regionData] = useState(() => new RegionData());
+  const [mountainData] = useState(() => new MountainData());
   const [inputSystem] = useState(() => new InputSystem());
   const [viewportSystem] = useState(() => new ViewportSystem(mapData, 80, 20));
-  const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData));
-  const [renderSystem] = useState(() => new RenderSystem(viewportSystem));
+  const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData, mountainData));
+  const [renderSystem] = useState(() => new RenderSystem(viewportSystem, mountainData));
   const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData));
   const [mapDisplay, setMapDisplay] = useState<StyledTile[][]>([]);
   const [regionInfo, setRegionInfo] = useState<{ realm: string; subRegion: string } | null>(null);
@@ -41,6 +43,9 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     
     // Load region data
     regionData.loadFromFile('middle_earth_regions.bin', 'middle_earth_pois.csv');
+    
+    // Load mountain depth data
+    mountainData.loadFromFile('middle_earth_mountains.bin');
     
     // Create player entity
     const player = world.createEntity();
@@ -65,7 +70,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [world, mapData, regionData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
+  }, [world, mapData, regionData, mountainData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
 
   return (
     <Box flexDirection="column">

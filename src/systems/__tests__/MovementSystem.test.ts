@@ -2,6 +2,7 @@ import { MovementSystem } from '../MovementSystem.js';
 import { InputSystem } from '../InputSystem.js';
 import { World } from '../../ecs/World.js';
 import { MapData } from '../../MapData.js';
+import { MountainData } from '../../MountainData.js';
 import { Position } from '../../components/Position.js';
 import { Movable } from '../../components/Movable.js';
 import { Player } from '../../components/Player.js';
@@ -20,8 +21,8 @@ class MockMapData extends MapData {
     }
     // Create a simple test map
     // Water on edges
-    if (x === 0 || x === this.width - 1) return '~';
-    if (y === 0 || y === this.height - 1) return '~';
+    if (x === 0 || x === this.width - 1) return '=';
+    if (y === 0 || y === this.height - 1) return '=';
     // Mountain at (5, 5)
     if (x === 5 && y === 5) return '^';
     // Clear everywhere else
@@ -29,10 +30,23 @@ class MockMapData extends MapData {
   }
 }
 
+// Mock MountainData
+class MockMountainData extends MountainData {
+  isDeepMountain(x: number, y: number): boolean {
+    // Mountain at (5, 5) is deep
+    return x === 5 && y === 5;
+  }
+  
+  isEdgeMountain(x: number, y: number): boolean {
+    return false;
+  }
+}
+
 describe('MovementSystem', () => {
   let world: World;
   let inputSystem: InputSystem;
   let mapData: MockMapData;
+  let mountainData: MockMountainData;
   let movementSystem: MovementSystem;
   let player: ReturnType<World['createEntity']>;
 
@@ -40,7 +54,8 @@ describe('MovementSystem', () => {
     world = new World();
     inputSystem = new InputSystem();
     mapData = new MockMapData(10, 10);
-    movementSystem = new MovementSystem(inputSystem, mapData);
+    mountainData = new MockMountainData();
+    movementSystem = new MovementSystem(inputSystem, mapData, mountainData);
 
     // Create player entity
     player = world.createEntity();

@@ -1,17 +1,17 @@
-#!/usr/bin/env python3
 """
-Utilities for detecting, naming, and rasterising geographic features
-(mountains, hills, forests, marshes, deep-water bodies) on the ASCII world
-map used by map_preprocessing.py.
+Extracts geographic feature annotations from Middle Earth map.
 
-The public entry-point is
-    build_geo_feature_grid(grid)
+Geographic features are natural landmarks that get labels:
+  * '?Name' (adjacent to a geographic terrain character)
+  * Embedded names like "Mirkwood" inside forest tiles
+
+Geographic labels are differentiated from POI labels (which use '!' prefix).
 
 It returns:
     clean_grid      – a **deep-copied** version of the input with every
                       geographic label removed / terrain restored
     geo_id_grid     – H×W numpy.int16 array holding a feature-id for every
-                      cell (-1 for “no feature”)
+                      cell (-1 for "no feature")
     feature_names   – list[str] giving the text for each feature-id
     seed_rows       – list[int]  row of the label that named the feature
     seed_cols       – list[int]  col of the label that named the feature
@@ -24,7 +24,7 @@ from typing import List, Tuple, Dict, Any, Iterable
 # CONSTANTS & HELPERS
 ################################################################################
 DIRS = [(1,0),(-1,0),(0,1),(0,-1)]
-TERRAIN_FEATURE_CHARS = {'^', '~', '&', '%', '='}      # mountains, hills, forest, marsh, deep water
+TERRAIN_FEATURE_CHARS = {'^', '~', '&', '%', '=', '"'}      # mountains, hills, forest, marsh, deep water, fields
 TRANSPARENT = {'.', '-', '|', '+'}                     # roads / rivers ignored for connectivity
 LABEL_CHARS   = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_'")
 
@@ -46,7 +46,14 @@ def _detect_labels(grid: List[List[str]]) -> List[Dict[str,Any]]:
         c = 0
         while c < W:
             ch = grid[r][c]
-            # ---------- adjacent (“?Name”) ----------
+            # ---------- POI labels ("!Name") - skip entirely ----------
+            if ch == '!' and c+1 < W and _is_label_char(grid[r][c+1]):
+                c += 1
+                # Skip the entire POI label
+                while c < W and _is_label_char(grid[r][c]):
+                    c += 1
+                continue
+            # ---------- adjacent ("?Name") ----------
             if ch == '?' and c+1 < W and _is_label_char(grid[r][c+1]):
                 start_c = c
                 c += 1
@@ -65,7 +72,7 @@ def _detect_labels(grid: List[List[str]]) -> List[Dict[str,Any]]:
                             'component_seed': (comp_r, comp_c)
                         })
                 continue
-            # ---------- embedded (“Mirkwood” in forest) ----------
+            # ---------- embedded ("Mirkwood" in forest) ----------
             if _is_label_char(ch):
                 start_c = c
                 chars = []
@@ -88,12 +95,12 @@ def _detect_labels(grid: List[List[str]]) -> List[Dict[str,Any]]:
 
 def _infer_embedded_terrain(grid: List[List[str]], r:int, c0:int, length:int) -> str|None:
     """Return the majority terrain surrounding an embedded label."""
-    H, W = len(grid), len(grid[0])
+    H = len(grid)
     counts = collections.Counter()
     for dc in range(-1, length+1):
         for dr in (-1,0,1):
             nr, nc = r+dr, c0+dc
-            if _in_bounds(nr,nc,H,W):
+            if 0 <= nr < H and 0 <= nc < len(grid[nr]):
                 ch = grid[nr][nc]
                 if ch in TERRAIN_FEATURE_CHARS:
                     counts[ch] += 1
@@ -109,7 +116,7 @@ def _nearest_feature_terrain(grid: List[List[str]], r:int, c:int,
     counting diagonal moves as legitimate steps.  Returns
         (terrain_char, row, col)   or   (None, None, None) if none found.
 
-    The search expands in 8-connected space (so “nearest” uses Chebyshev
+    The search expands in 8-connected space (so "nearest" uses Chebyshev
     distance rather than purely orthogonal Manhattan distance).
     """
     H, W = len(grid), len(grid[0])
@@ -210,7 +217,7 @@ def build_geo_feature_grid(grid: List[List[str]]):
     Returns
     -------
     clean_grid     – grid with geographic labels removed / terrain restored
-    geo_id_grid    – numpy array int16, value -1 means ‘no named feature’
+    geo_id_grid    – numpy array int16, value -1 means 'no named feature'
     feature_names  – list[str] length == max geo-id+1
     seed_rows      – list[int] – one per feature, row where its label was found
     seed_cols      – list[int] – one per feature, col where its label was found
@@ -261,7 +268,7 @@ def build_geo_feature_grid(grid: List[List[str]]):
             seed_rows.append(rr)
             seed_cols.append(cc)
         else:
-            # Multiple labels for same component – pick the “best” (longest)
+            # Multiple labels for same component – pick the "best" (longest)
             fid = comp_to_featureid[key]
             if len(lbl['text']) > len(feature_names[fid]):
                 feature_names[fid] = lbl['text']   # override to longer name

@@ -5,7 +5,8 @@ Geographic features are natural landmarks that get labels:
   * '?Name' (adjacent to a geographic terrain character)
   * Embedded names like "Mirkwood" inside forest tiles
 
-Geographic labels are differentiated from POI labels (which use '!' prefix).
+Geographic labels are differentiated from POI labels (which use '!' prefix) 
+and river labels (which use '@' prefix).
 
 It returns:
     clean_grid      – a **deep-copied** version of the input with every
@@ -17,7 +18,7 @@ It returns:
     seed_cols       – list[int]  col of the label that named the feature
 """
 from __future__ import annotations
-import collections, math, numpy as np
+import collections, math, numpy as np, heapq
 from typing import List, Tuple, Dict, Any, Iterable
 
 ################################################################################
@@ -27,6 +28,7 @@ DIRS = [(1,0),(-1,0),(0,1),(0,-1)]
 TERRAIN_FEATURE_CHARS = {'^', '~', '&', '%', '=', '"'}      # mountains, hills, forest, marsh, deep water, fields
 TRANSPARENT = {'.', '-', '|', '+'}                     # roads / rivers ignored for connectivity
 LABEL_CHARS   = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_'")
+RIVER_CHARS = {'-', '|'}  # River tiles that deep water should not flood into
 
 def _is_label_char(ch: str) -> bool:
     return ch in LABEL_CHARS
@@ -71,6 +73,13 @@ def _detect_labels(grid: List[List[str]]) -> List[Dict[str,Any]]:
                             'type': 'adjacent',
                             'component_seed': (comp_r, comp_c)
                         })
+                continue
+            # ---------- River labels (@Name) - skip entirely ----------
+            if ch == '@' and c+1 < W and _is_label_char(grid[r][c+1]):
+                c += 1
+                # Skip the entire river label
+                while c < W and _is_label_char(grid[r][c]):
+                    c += 1
                 continue
             # ---------- embedded ("Mirkwood" in forest) ----------
             if _is_label_char(ch):
@@ -162,44 +171,77 @@ def _restore_terrain(clean_grid: List[List[str]], labels: List[Dict[str,Any]]) -
                 clean_grid[r][c+i] = ' '                # blank to open ground
 
 ################################################################################
-# CONNECTED-COMPONENT ANALYSIS
+# MULTI-SOURCE DIJKSTRA FOR GEOGRAPHIC FEATURES
 ################################################################################
-def _find_components(grid: List[List[str]],
-                     terrain_char: str) -> Tuple[np.ndarray,int]:
+def _multi_source_dijkstra(grid: List[List[str]], seeds: List[Tuple[int,int,int]], 
+                          terrain_char: str) -> np.ndarray:
     """
-    Return:
-        comp_id_grid – H×W np.int32 where value == component id or -1
-        n_components – number of discovered components
-    Rivers & roads (TRANSPARENT set) are treated as see-through.
+    Run multi-source Dijkstra to assign each terrain tile to nearest labeled feature.
+    
+    Args:
+        grid: The terrain grid
+        seeds: List of (row, col, feature_id) tuples for each labeled feature
+        terrain_char: The terrain type we're processing
+        
+    Returns:
+        owner_grid: H×W array where each cell contains feature_id or -1
     """
-    H, W = len(grid), len(grid[0])
-    comp = np.full((H,W), -1, dtype=np.int32)
-    next_id = 0
-
-    def is_connectable(rr:int,cc:int)->bool:
-        ch = grid[rr][cc]
-        return ch == terrain_char or ch in TRANSPARENT
-
+    H, W = len(grid), len(grid[0]) if grid else 0
+    dist = np.full((H, W), np.inf)
+    owner = np.full((H, W), -1, dtype=np.int16)
+    pq = []
+    
+    # Initialize seeds
+    for r, c, fid in seeds:
+        dist[r, c] = 0
+        owner[r, c] = fid
+        heapq.heappush(pq, (0, r, c, fid))
+    
+    # Special handling for deep water - don't cross rivers
+    def can_expand_to(from_r, from_c, to_r, to_c):
+        if not _in_bounds(to_r, to_c, H, W):
+            return False
+        to_ch = grid[to_r][to_c]
+        
+        # For deep water, don't expand into rivers
+        if terrain_char == '=' and to_ch in RIVER_CHARS:
+            return False
+            
+        # Otherwise, can expand to same terrain or transparent tiles
+        return to_ch == terrain_char or to_ch in TRANSPARENT
+    
+    # Dijkstra expansion
+    while pq:
+        d, r, c, fid = heapq.heappop(pq)
+        
+        # Skip if we've found a better path
+        if d > dist[r, c]:
+            continue
+            
+        # Try all 4 directions
+        for dr, dc in DIRS:
+            nr, nc = r + dr, c + dc
+            
+            if not can_expand_to(r, c, nr, nc):
+                continue
+                
+            # Cost is 1 for same terrain, higher for transparent tiles
+            cost = 1 if grid[nr][nc] == terrain_char else 2
+            new_dist = d + cost
+            
+            if new_dist < dist[nr, nc]:
+                dist[nr, nc] = new_dist
+                owner[nr, nc] = fid
+                heapq.heappush(pq, (new_dist, nr, nc, fid))
+    
+    # Only return ownership for actual terrain tiles, not transparent ones
+    result = np.full((H, W), -1, dtype=np.int16)
     for r in range(H):
         for c in range(W):
-            if grid[r][c] != terrain_char or comp[r,c] != -1:
-                continue
-            # BFS for this component
-            q = collections.deque([(r,c)])
-            comp[r,c] = next_id
-            while q:
-                rr,cc = q.popleft()
-                for dr,dc in DIRS:
-                    nr,nc = rr+dr, cc+dc
-                    if not _in_bounds(nr,nc,H,W): continue
-                    if comp[nr,nc] != -1: continue
-                    if not is_connectable(nr,nc):  continue
-                    # mark transparent tiles too, but only enqueue if same terrain
-                    comp[nr,nc] = next_id
-                    if grid[nr][nc] == terrain_char:
-                        q.append((nr,nc))
-            next_id += 1
-    return comp, next_id
+            if grid[r][c] == terrain_char and owner[r, c] >= 0:
+                result[r, c] = owner[r, c]
+    
+    return result
 
 ################################################################################
 # MAIN PUBLIC DRIVER
@@ -227,61 +269,62 @@ def build_geo_feature_grid(grid: List[List[str]]):
     clean_grid = [row[:] for row in grid]               # deep copy by row
     _restore_terrain(clean_grid, labels)
 
-    # 2. Connected components for each terrain type
+    # 2. Organize labels by terrain type
     H, W = len(clean_grid), len(clean_grid[0]) if clean_grid else 0
     geo_id_grid = np.full((H,W), -1, dtype=np.int16)
 
     feature_names : List[str] = []
     seed_rows     : List[int] = []
     seed_cols     : List[int] = []
-
-    terrain_to_comp_map : Dict[str, np.ndarray] = {}
-    terrain_to_comp_count : Dict[str,int] = {}
-
-    # Pre-compute component grids once per terrain type
-    for tch in TERRAIN_FEATURE_CHARS:
-        comp, ncomp = _find_components(clean_grid, tch)
-        terrain_to_comp_map[tch] = comp
-        terrain_to_comp_count[tch] = ncomp
-
-    # 3. Assign component-level ids
-    comp_to_featureid : Dict[Tuple[str,int], int] = {}
-
+    
+    # Group labels by terrain type
+    terrain_to_labels : Dict[str, List[Dict[str,Any]]] = {}
     for lbl in labels:
-        tch = lbl['terrain']
-        if tch is None:           # label couldn't decide terrain – skip
+        terrain = lbl['terrain']
+        if terrain is None:
             continue
-        comp_grid = terrain_to_comp_map[tch]
-        if lbl['type'] == 'embedded':
-            rr,cc = lbl['row'], lbl['col']
-        else:
-            # adjacent label – use saved component seed found during detection
-            rr,cc = lbl.get('component_seed', (None,None))
-            if rr is None: continue
-        comp_id = comp_grid[rr,cc]
-        if comp_id == -1: continue
-        key = (tch, comp_id)
-        if key not in comp_to_featureid:
-            fid = len(feature_names)
-            comp_to_featureid[key] = fid
+        if terrain not in terrain_to_labels:
+            terrain_to_labels[terrain] = []
+        terrain_to_labels[terrain].append(lbl)
+    
+    # 3. Process each terrain type with multi-source Dijkstra
+    next_feature_id = 0
+    
+    for terrain_char in TERRAIN_FEATURE_CHARS:
+        if terrain_char not in terrain_to_labels:
+            continue
+            
+        # Create seeds for this terrain type
+        seeds = []
+        terrain_labels = terrain_to_labels[terrain_char]
+        
+        for lbl in terrain_labels:
+            if lbl['type'] == 'embedded':
+                seed_r, seed_c = lbl['row'], lbl['col']
+            else:
+                # adjacent label - use the found terrain position
+                seed_r, seed_c = lbl.get('component_seed', (None, None))
+                if seed_r is None:
+                    continue
+            
+            # Assign feature ID and record
+            fid = next_feature_id
+            next_feature_id += 1
+            
             feature_names.append(lbl['text'])
-            seed_rows.append(rr)
-            seed_cols.append(cc)
-        else:
-            # Multiple labels for same component – pick the "best" (longest)
-            fid = comp_to_featureid[key]
-            if len(lbl['text']) > len(feature_names[fid]):
-                feature_names[fid] = lbl['text']   # override to longer name
-
-    # 4. Write final geo_id_grid
-    for tch, comp_grid in terrain_to_comp_map.items():
-        it = np.nditer(comp_grid, flags=['multi_index'])
-        for cid in it:
-            cid_int = int(cid)
-            if cid_int == -1: continue
-            fid = comp_to_featureid.get((tch, cid_int))
-            if fid is not None:
-                r,c = it.multi_index
-                geo_id_grid[r,c] = fid
+            seed_rows.append(seed_r)
+            seed_cols.append(seed_c)
+            
+            seeds.append((seed_r, seed_c, fid))
+        
+        # Run multi-source Dijkstra for this terrain type
+        if seeds:
+            terrain_owner = _multi_source_dijkstra(clean_grid, seeds, terrain_char)
+            
+            # Merge into main geo_id_grid
+            for r in range(H):
+                for c in range(W):
+                    if terrain_owner[r, c] >= 0:
+                        geo_id_grid[r, c] = terrain_owner[r, c]
 
     return clean_grid, geo_id_grid, feature_names, seed_rows, seed_cols

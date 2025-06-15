@@ -16,6 +16,15 @@ export class ViewportSystem extends System {
   ) {
     super();
   }
+  
+  setViewportSize(width: number, height: number): void {
+    this.viewWidth = width;
+    this.viewHeight = height;
+  }
+  
+  getViewportSize(): { width: number; height: number } {
+    return { width: this.viewWidth, height: this.viewHeight };
+  }
 
   update(world: World, deltaTime: number): void {
     // Follow the player if one exists

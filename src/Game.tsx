@@ -5,6 +5,7 @@ import { ViewportSystem } from './systems/ViewportSystem.js';
 import { RenderSystem } from './systems/RenderSystem.js';
 import { InputSystem } from './systems/InputSystem.js';
 import { useInputSystem } from './hooks/useInputSystem.js';
+import { useTerminalSize } from './hooks/useTerminalSize.js';
 import { MovementSystem } from './systems/MovementSystem.js';
 import { MapData } from './MapData.js';
 import { RegionData } from './RegionData.js';
@@ -26,7 +27,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   const [regionData] = useState(() => new RegionData());
   const [mountainData] = useState(() => new MountainData());
   const [inputSystem] = useState(() => new InputSystem());
-  const [viewportSystem] = useState(() => new ViewportSystem(mapData, 80, 20));
+  const [viewportSystem] = useState(() => new ViewportSystem(mapData));
   const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData, mountainData));
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem, mountainData));
   const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData));
@@ -36,6 +37,18 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
 
   // Connect ink input to our input system
   useInputSystem(inputSystem);
+  
+  // Get terminal size
+  const terminalSize = useTerminalSize();
+  
+  // Calculate viewport size accounting for UI elements
+  const viewportWidth = Math.max(20, terminalSize.columns - 2); // -2 for border
+  const viewportHeight = Math.max(10, terminalSize.rows - 5); // -5 for region info, border, and controls
+  
+  // Update viewport size when terminal resizes
+  useEffect(() => {
+    viewportSystem.setViewportSize(viewportWidth, viewportHeight);
+  }, [viewportSystem, viewportWidth, viewportHeight]);
 
   useEffect(() => {
     // Load map

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node run.js",
+    "start": "tsx src/index.tsx",
     "dev": "tsx src/index.tsx",
     "test": "jest",
     "test:watch": "jest --watch"

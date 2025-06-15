@@ -123,4 +123,32 @@ describe('MovementSystem', () => {
     world.update(16);
     expect(position?.x).toBe(3);
   });
+
+  test('should handle diagonal movement', () => {
+    const position = player.getComponent<Position>('Position');
+    
+    // Up-left
+    inputSystem.setDirection('up-left');
+    world.update(16);
+    expect(position?.x).toBe(2);
+    expect(position?.y).toBe(2);
+
+    // Down-right (should go back to 3,3)
+    inputSystem.setDirection('down-right');
+    world.update(16);
+    expect(position?.x).toBe(3);
+    expect(position?.y).toBe(3);
+
+    // Up-right
+    inputSystem.setDirection('up-right');
+    world.update(16);
+    expect(position?.x).toBe(4);
+    expect(position?.y).toBe(2);
+
+    // Down-left (should go back to 3,3)
+    inputSystem.setDirection('down-left');
+    world.update(16);
+    expect(position?.x).toBe(3);
+    expect(position?.y).toBe(3);
+  });
 });

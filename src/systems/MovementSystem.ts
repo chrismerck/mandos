@@ -45,6 +45,22 @@ export class MovementSystem extends System {
       case 'right':
         newX += movable.speed;
         break;
+      case 'up-left':
+        newX -= movable.speed;
+        newY -= movable.speed;
+        break;
+      case 'up-right':
+        newX += movable.speed;
+        newY -= movable.speed;
+        break;
+      case 'down-left':
+        newX -= movable.speed;
+        newY += movable.speed;
+        break;
+      case 'down-right':
+        newX += movable.speed;
+        newY += movable.speed;
+        break;
     }
 
     // Check if new position is valid

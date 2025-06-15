@@ -62,7 +62,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
         <Text>{mapDisplay}</Text>
       </Box>
       <Box marginTop={1}>
-        <Text dimColor>Arrow keys or hjkl to move | @ = You | Ctrl+C to exit</Text>
+        <Text dimColor>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You | Ctrl+C to exit</Text>
       </Box>
     </Box>
   );

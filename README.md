@@ -29,7 +29,15 @@ npm start
 ```
 
 ### Controls
-- **Arrow keys** or **h,j,k,l** - Move player
+- **Numpad (1-9)** - 8-directional movement (classic roguelike)
+  - 7 8 9
+  - 4 · 6  
+  - 1 2 3
+- **Vi-keys** - 8-directional movement
+  - y k u
+  - h · l
+  - b j n
+- **Arrow keys** - 4-directional movement
 - **Ctrl+C** - Exit game
 
 ## Testing

@@ -1,7 +1,7 @@
 import { System } from '../ecs/System.js';
 import { World } from '../ecs/World.js';
 
-export type Direction = 'up' | 'down' | 'left' | 'right' | null;
+export type Direction = 'up' | 'down' | 'left' | 'right' | 'up-left' | 'up-right' | 'down-left' | 'down-right' | null;
 
 export class InputSystem extends System {
   private currentDirection: Direction = null;

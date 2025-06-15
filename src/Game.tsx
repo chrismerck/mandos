@@ -43,7 +43,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   
   // Calculate viewport size accounting for UI elements
   const viewportWidth = Math.max(20, terminalSize.columns - 2); // -2 for border
-  const viewportHeight = Math.max(10, terminalSize.rows - 5); // -5 for region info, border, and controls
+  const viewportHeight = Math.max(10, terminalSize.rows - 8); // -8 for top (2 lines), bottom (2 lines), border (2), and controls (2)
   
   // Update viewport size when terminal resizes
   useEffect(() => {
@@ -87,19 +87,28 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
 
   return (
     <Box flexDirection="column">
-      {regionInfo && (
-        <Box marginBottom={1}>
-          <Text color="cyan" bold>
-            {regionInfo.realm}
-            {regionInfo.subRegion && ` - ${regionInfo.subRegion}`}
-          </Text>
-        </Box>
-      )}
+      {/* Top space - 2 lines */}
+      <Box height={2} flexDirection="column">
+        <Text> </Text>
+        <Text> </Text>
+      </Box>
+      
+      {/* Map viewport */}
       <Box borderStyle="single" padding={0}>
         <MapDisplay tiles={mapDisplay} />
       </Box>
-      <Box marginTop={1}>
-        <Text dimColor>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You | Ctrl+C to exit</Text>
+      
+      {/* Bottom space - 2 lines for info */}
+      <Box marginTop={1} flexDirection="column">
+        <Box>
+          <Text dimColor>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You | Ctrl+C to exit</Text>
+          {regionInfo && (
+            <Text color="cyan"> | {regionInfo.realm}
+              {regionInfo.subRegion && ` - ${regionInfo.subRegion}`}
+            </Text>
+          )}
+        </Box>
+        <Text> </Text>
       </Box>
     </Box>
   );

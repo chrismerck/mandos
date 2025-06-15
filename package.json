@@ -8,7 +8,9 @@
     "start": "tsx src/index.tsx",
     "dev": "tsx src/index.tsx",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "preprocess-map": "python3 scripts/map_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_regions.bin maps/middle_earth_pois.csv",
+    "prebuild": "npm run preprocess-map"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +23,6 @@
     "typescript": "^5.8.3"
   },
   "devDependencies": {
-    "@types/ink": "^0.5.2",
     "@types/jest": "^29.5.14",
     "@types/node": "^24.0.1",
     "jest": "^29.7.0",

@@ -6,3 +6,7 @@ dist/
 coverage/
 .vscode/
 .idea/
+
+# Generated map data
+maps/*.bin
+maps/*.csv

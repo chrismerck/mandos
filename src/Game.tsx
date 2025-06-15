@@ -7,11 +7,13 @@ import { InputSystem } from './systems/InputSystem.js';
 import { useInputSystem } from './hooks/useInputSystem.js';
 import { MovementSystem } from './systems/MovementSystem.js';
 import { MapData } from './MapData.js';
+import { RegionData } from './RegionData.js';
 import { Position } from './components/Position.js';
 import { Renderable } from './components/Renderable.js';
 import { Player } from './components/Player.js';
 import { Movable } from './components/Movable.js';
 import { MapDisplay, StyledTile } from './components/MapDisplay.js';
+import { RegionDisplaySystem } from './systems/RegionDisplaySystem.js';
 
 interface GameProps {
   mapFile: string;
@@ -20,11 +22,14 @@ interface GameProps {
 export const Game: React.FC<GameProps> = ({ mapFile }) => {
   const [world] = useState(() => new World());
   const [mapData] = useState(() => new MapData());
+  const [regionData] = useState(() => new RegionData());
   const [inputSystem] = useState(() => new InputSystem());
   const [viewportSystem] = useState(() => new ViewportSystem(mapData, 80, 20));
   const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData));
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem));
+  const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData));
   const [mapDisplay, setMapDisplay] = useState<StyledTile[][]>([]);
+  const [regionInfo, setRegionInfo] = useState<{ realm: string; subRegion: string } | null>(null);
   const [, forceUpdate] = useState({});
 
   // Connect ink input to our input system
@@ -33,6 +38,9 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   useEffect(() => {
     // Load map
     mapData.loadFromFile(mapFile);
+    
+    // Load region data
+    regionData.loadFromFile('middle_earth_regions.bin', 'middle_earth_pois.csv');
     
     // Create player entity
     const player = world.createEntity();
@@ -44,6 +52,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     // Add systems to world in correct order
     world.addSystem(inputSystem);
     world.addSystem(movementSystem);
+    world.addSystem(regionDisplaySystem);
     world.addSystem(viewportSystem);
     world.addSystem(renderSystem);
 
@@ -51,14 +60,23 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     const gameLoop = setInterval(() => {
       world.update(16); // ~60 FPS
       setMapDisplay(renderSystem.getStyledMap());
+      setRegionInfo(regionDisplaySystem.getPlayerRegionInfo(world));
       forceUpdate({});
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [world, mapData, inputSystem, viewportSystem, movementSystem, renderSystem, mapFile]);
+  }, [world, mapData, regionData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
 
   return (
     <Box flexDirection="column">
+      {regionInfo && (
+        <Box marginBottom={1}>
+          <Text color="cyan" bold>
+            {regionInfo.realm}
+            {regionInfo.subRegion && ` - ${regionInfo.subRegion}`}
+          </Text>
+        </Box>
+      )}
       <Box borderStyle="single" padding={0}>
         <MapDisplay tiles={mapDisplay} />
       </Box>

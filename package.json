@@ -12,7 +12,10 @@
     "preprocess-map": "python3 scripts/map_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_regions.bin maps/middle_earth_pois.csv",
     "preprocess-mountains": "python3 scripts/mountain_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_mountains.bin", 
     "preprocess": "npm run preprocess-map && npm run preprocess-mountains",
-    "prebuild": "npm run preprocess"
+    "check-map": "python3 scripts/check_and_preprocess.py",
+    "prebuild": "npm run check-map",
+    "prestart": "npm run check-map",
+    "predev": "npm run check-map"
   },
   "keywords": [],
   "author": "",

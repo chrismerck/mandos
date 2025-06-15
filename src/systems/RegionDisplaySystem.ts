@@ -30,12 +30,13 @@ export class RegionDisplaySystem extends System {
         const region = this.regionData.getRegionInfo(position.x, position.y);
         
         if (region) {
-          // Geographic features take priority over region names
+          // Show both realm and geographic feature when in a geographic feature
           if (region.geoFeatureName) {
-            // Show geographic feature name
-            if (regionInfo.realmName !== region.geoFeatureName || regionInfo.subRegionName !== '') {
-              regionInfo.realmName = region.geoFeatureName;
-              regionInfo.subRegionName = '';
+            // Show realm name and geographic feature name
+            if (regionInfo.realmName !== region.realmName || 
+                regionInfo.subRegionName !== region.geoFeatureName) {
+              regionInfo.realmName = region.realmName;
+              regionInfo.subRegionName = region.geoFeatureName;
             }
           } else {
             // Show realm/region names

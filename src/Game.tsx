@@ -63,7 +63,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     // Create player entity
     const player = world.createEntity();
     player.addComponent(new Player());
-    player.addComponent(new Position(50, 50)); // Start near Hobbiton
+    player.addComponent(new Position(145, 49)); // Start at Hobbiton (col, row)
     player.addComponent(new Renderable('@', 10, 'yellowBright')); // High priority, bright yellow
     player.addComponent(new Movable(1));
     

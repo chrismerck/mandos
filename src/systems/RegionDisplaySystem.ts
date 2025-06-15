@@ -30,11 +30,20 @@ export class RegionDisplaySystem extends System {
         const region = this.regionData.getRegionInfo(position.x, position.y);
         
         if (region) {
-          // Update if changed
-          if (regionInfo.realmName !== region.realmName || 
-              regionInfo.subRegionName !== region.subRegionName) {
-            regionInfo.realmName = region.realmName;
-            regionInfo.subRegionName = region.subRegionName;
+          // Geographic features take priority over region names
+          if (region.geoFeatureName) {
+            // Show geographic feature name
+            if (regionInfo.realmName !== region.geoFeatureName || regionInfo.subRegionName !== '') {
+              regionInfo.realmName = region.geoFeatureName;
+              regionInfo.subRegionName = '';
+            }
+          } else {
+            // Show realm/region names
+            if (regionInfo.realmName !== region.realmName || 
+                regionInfo.subRegionName !== region.subRegionName) {
+              regionInfo.realmName = region.realmName;
+              regionInfo.subRegionName = region.subRegionName;
+            }
           }
         } else {
           // Outside any region

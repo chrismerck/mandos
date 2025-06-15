@@ -66,7 +66,15 @@ npm run preprocess-map  # Regenerate region data from map
 - **RegionInfo.ts**: Component tracking current realm/sub-region names
 - **RegionDisplaySystem.ts**: Updates region info based on player position
 - Python preprocessing script in `scripts/map_preprocessing.py` generates region data
-- Binary format: 4-byte header + 2 bytes per tile (realm ID, sub-region ID) + name tables
+- Binary format REG2: 4-byte header + 3 bytes per tile (realm ID, sub-region ID, geo feature ID) + name tables
+- Geographic features (mountains, forests, etc.) take display priority over regions
+
+### Geographic Features
+- **geo_features_preprocessing.py**: Module for detecting and labeling geographic features
+- Supports embedded labels (e.g., "Mirkwood") and ?-prefixed labels (e.g., "?Dead_Marshes")
+- Features can span multiple realms (e.g., Misty Mountains)
+- Rivers and roads don't break feature connectivity
+- 48 geographic features detected in Middle Earth map
 
 ### Build Process
 - `npm run prebuild` automatically runs map preprocessing

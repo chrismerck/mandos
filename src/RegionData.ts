@@ -6,6 +6,8 @@ export interface RegionInfo {
   realmName: string;
   subRegionId: number;
   subRegionName: string;
+  geoFeatureId: number;
+  geoFeatureName: string;
 }
 
 export interface POI {
@@ -22,8 +24,10 @@ export class RegionData {
   private height: number = 0;
   private realmGrid: Uint8Array | null = null;
   private subRegionGrid: Uint8Array | null = null;
+  private geoFeatureGrid: Uint8Array | null = null;
   private realmNames: string[] = [];
   private subRegionNames: string[] = [];
+  private geoFeatureNames: string[] = [];
   private pois: POI[] = [];
   
   loadFromFile(gridFile: string, poiFile: string): void {
@@ -43,7 +47,7 @@ export class RegionData {
     
     // Check magic number
     const magic = buffer.toString('ascii', 0, 4);
-    if (magic !== 'REG1') {
+    if (magic !== 'REG2' && magic !== 'REG1') {
       throw new Error('Invalid region grid file format');
     }
     offset += 4;
@@ -56,7 +60,7 @@ export class RegionData {
     this.height = buffer.readUInt16LE(offset);
     offset += 2;
     
-    if (version !== 1) {
+    if (version !== 1 && version !== 2) {
       throw new Error(`Unsupported region grid version: ${version}`);
     }
     
@@ -64,12 +68,27 @@ export class RegionData {
     const gridSize = this.width * this.height;
     this.realmGrid = new Uint8Array(gridSize);
     this.subRegionGrid = new Uint8Array(gridSize);
+    this.geoFeatureGrid = new Uint8Array(gridSize);
     
-    for (let i = 0; i < gridSize; i++) {
-      this.realmGrid[i] = buffer.readUInt8(offset);
-      offset += 1;
-      this.subRegionGrid[i] = buffer.readUInt8(offset);
-      offset += 1;
+    if (version === 2) {
+      // REG2 format: realm, sub-region, geo-feature per tile
+      for (let i = 0; i < gridSize; i++) {
+        this.realmGrid[i] = buffer.readUInt8(offset);
+        offset += 1;
+        this.subRegionGrid[i] = buffer.readUInt8(offset);
+        offset += 1;
+        this.geoFeatureGrid[i] = buffer.readUInt8(offset);
+        offset += 1;
+      }
+    } else {
+      // REG1 format: only realm and sub-region
+      for (let i = 0; i < gridSize; i++) {
+        this.realmGrid[i] = buffer.readUInt8(offset);
+        offset += 1;
+        this.subRegionGrid[i] = buffer.readUInt8(offset);
+        offset += 1;
+        this.geoFeatureGrid[i] = 255; // No geo features
+      }
     }
     
     // Read realm names
@@ -95,6 +114,20 @@ export class RegionData {
       offset += nameLen;
       this.subRegionNames.push(name);
     }
+    
+    // Read geo feature names (REG2 only)
+    if (version === 2 && offset < buffer.length) {
+      const numGeoFeatures = buffer.readUInt8(offset);
+      offset += 1;
+      this.geoFeatureNames = [];
+      for (let i = 0; i < numGeoFeatures; i++) {
+        const nameLen = buffer.readUInt8(offset);
+        offset += 1;
+        const name = buffer.toString('utf-8', offset, offset + nameLen);
+        offset += nameLen;
+        this.geoFeatureNames.push(name);
+      }
+    }
   }
   
   private parsePOIs(content: string): void {
@@ -119,7 +152,7 @@ export class RegionData {
   }
   
   getRegionInfo(x: number, y: number): RegionInfo | null {
-    if (!this.realmGrid || !this.subRegionGrid) {
+    if (!this.realmGrid || !this.subRegionGrid || !this.geoFeatureGrid) {
       return null;
     }
     
@@ -130,6 +163,7 @@ export class RegionData {
     const index = y * this.width + x;
     const realmId = this.realmGrid[index];
     const subRegionId = this.subRegionGrid[index];
+    const geoFeatureId = this.geoFeatureGrid[index];
     
     if (realmId === 255) {
       return null; // No realm
@@ -139,7 +173,9 @@ export class RegionData {
       realmId,
       realmName: this.realmNames[realmId] || 'Unknown',
       subRegionId: subRegionId === 255 ? -1 : subRegionId,
-      subRegionName: subRegionId === 255 ? '' : (this.subRegionNames[subRegionId] || '')
+      subRegionName: subRegionId === 255 ? '' : (this.subRegionNames[subRegionId] || ''),
+      geoFeatureId: geoFeatureId === 255 ? -1 : geoFeatureId,
+      geoFeatureName: geoFeatureId === 255 ? '' : (this.geoFeatureNames[geoFeatureId] || '')
     };
   }
   

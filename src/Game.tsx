@@ -11,6 +11,7 @@ import { Position } from './components/Position.js';
 import { Renderable } from './components/Renderable.js';
 import { Player } from './components/Player.js';
 import { Movable } from './components/Movable.js';
+import { MapDisplay, StyledTile } from './components/MapDisplay.js';
 
 interface GameProps {
   mapFile: string;
@@ -23,7 +24,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   const [viewportSystem] = useState(() => new ViewportSystem(mapData, 80, 20));
   const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData));
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem));
-  const [mapDisplay, setMapDisplay] = useState<string>('');
+  const [mapDisplay, setMapDisplay] = useState<StyledTile[][]>([]);
   const [, forceUpdate] = useState({});
 
   // Connect ink input to our input system
@@ -37,7 +38,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     const player = world.createEntity();
     player.addComponent(new Player());
     player.addComponent(new Position(50, 50)); // Start near Hobbiton
-    player.addComponent(new Renderable('@', 10)); // High priority to render on top
+    player.addComponent(new Renderable('@', 10, 'yellowBright')); // High priority, bright yellow
     player.addComponent(new Movable(1));
     
     // Add systems to world in correct order
@@ -49,7 +50,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
     // Game loop
     const gameLoop = setInterval(() => {
       world.update(16); // ~60 FPS
-      setMapDisplay(renderSystem.getRenderedString());
+      setMapDisplay(renderSystem.getStyledMap());
       forceUpdate({});
     }, 16);
 
@@ -59,7 +60,7 @@ export const Game: React.FC<GameProps> = ({ mapFile }) => {
   return (
     <Box flexDirection="column">
       <Box borderStyle="single" padding={0}>
-        <Text>{mapDisplay}</Text>
+        <MapDisplay tiles={mapDisplay} />
       </Box>
       <Box marginTop={1}>
         <Text dimColor>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You | Ctrl+C to exit</Text>

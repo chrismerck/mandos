@@ -24,7 +24,7 @@ const colorMap: Record<string, string> = {
   'redBright': '#ff0000',
   'greenBright': '#00ff00',
   'yellowBright': '#ffff00',
-  'blueBright': '#0000ff',
+  'blueBright': '#0080ff',  // Intermediate blue for water
   'magentaBright': '#ff00ff',
   'cyanBright': '#00ffff',
   'whiteBright': '#ffffff',

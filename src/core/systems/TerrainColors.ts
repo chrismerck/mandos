@@ -8,12 +8,10 @@ export interface TerrainStyle {
 }
 
 export const TERRAIN_COLORS: Record<string, TerrainStyle> = {
-  // Ocean (dark blue)
-  '=': { color: 'blue' },
-  
-  // Rivers (light blue)
-  '-': { color: 'cyan' },
-  '|': { color: 'cyan' },
+  // Water (ocean and rivers - intermediate blue)
+  '=': { color: 'blueBright' },
+  '-': { color: 'blueBright' },
+  '|': { color: 'blueBright' },
   
   // Mountains
   '^': { color: 'gray' },

@@ -1,12 +1,8 @@
 import React from 'react';
 import { Box, Text } from 'ink';
-import { Color } from './Renderable.js';
-import { TerrainStyle } from '../systems/TerrainColors.js';
-
-export interface StyledTile {
-  char: string;
-  style: TerrainStyle;
-}
+import { Color } from '../core/components/Renderable.js';
+import { TerrainStyle } from '../core/systems/TerrainColors.js';
+import type { StyledTile } from '../shared/StyledTile.js';
 
 interface MapDisplayProps {
   tiles: StyledTile[][];

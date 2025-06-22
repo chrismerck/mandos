@@ -91,3 +91,6 @@ npm run preprocess-map  # Regenerate region data from map
 - Prefer editing existing files over creating new ones
 - Follow existing patterns for components/systems
 - Use component composition for UI (Box, Text from ink)
+
+## Communication Protocols
+- Let the developer know when you want to start the web server (give the command), and specify what it is you want them to look for/test. You DO NOT have the ability to test the web or terminal version yourself.

@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "lib": ["ES2020"],
+    "lib": ["ES2020", "DOM"],
+    "types": ["vite/client"],
     "jsx": "react-jsx",
     "outDir": "./dist",
     "rootDir": "./src",
@@ -17,5 +18,5 @@
     "sourceMap": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "src/**/*.test.ts", "src/**/__tests__/**/*"]
 }

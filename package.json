@@ -4,13 +4,17 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "start": "tsx src/index.tsx",
-    "dev": "tsx src/index.tsx",
+    "build": "tsc -p tsconfig.terminal.json",
+    "build:web": "vite build",
+    "start:web": "vite",
+    "preview:web": "vite preview",
+    "start": "tsx src/terminal/index.tsx",
+    "start:terminal": "tsx src/terminal/index.tsx",
+    "dev": "tsx src/terminal/index.tsx",
     "test": "jest",
     "test:watch": "jest --watch",
     "preprocess-map": "python3 scripts/map_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_regions.bin maps/middle_earth_pois.csv",
-    "preprocess-mountains": "python3 scripts/mountain_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_mountains.bin", 
+    "preprocess-mountains": "python3 scripts/mountain_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_mountains.bin",
     "preprocess": "npm run preprocess-map && npm run preprocess-mountains",
     "check-map": "python3 scripts/check_and_preprocess.py",
     "prebuild": "npm run check-map",
@@ -25,14 +29,18 @@
     "@types/react": "^19.1.8",
     "ink": "^6.0.0",
     "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "typescript": "^5.8.3"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/node": "^24.0.1",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.5.2",
     "jest": "^29.7.0",
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
-    "tsx": "^4.20.3"
+    "tsx": "^4.20.3",
+    "vite": "^6.3.5"
   }
 }

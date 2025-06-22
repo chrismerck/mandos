@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  },
+  "include": ["src/web/**/*", "src/core/**/*", "src/shared/**/*"],
+  "exclude": ["src/terminal/**/*", "src/**/*.test.ts", "src/**/__tests__/**/*"]
+}

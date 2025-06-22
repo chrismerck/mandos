@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "jest"],
+    "lib": ["ES2020"]
+  },
+  "include": ["src/terminal/**/*", "src/core/**/*", "src/shared/**/*"],
+  "exclude": ["src/web/**/*"]
+}

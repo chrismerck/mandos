@@ -1,6 +1,6 @@
 # Mandos2 - Middle Earth Terminal Map Game
 
-An ADOM-inspired terminal-based map exploration game built with TypeScript, React Ink, and an Entity Component System (ECS) architecture.
+An ADOM-inspired map exploration game built with TypeScript and an Entity Component System (ECS) architecture. Available in both terminal (React Ink) and web (Canvas) versions.
 
 ## Completed Features
 
@@ -23,9 +23,28 @@ Player navigation:
 
 ## Running the Game
 
+### Terminal Version
 ```bash
 npm install
 npm start
+# or
+npm run start:terminal
+```
+
+### Web Version
+```bash
+npm install
+npm run start:web
+# Open http://localhost:3000 in your browser
+```
+
+### Building
+```bash
+# Terminal version
+npm run build
+
+# Web version  
+npm run build:web
 ```
 
 ### Controls

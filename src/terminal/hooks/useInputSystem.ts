@@ -1,5 +1,5 @@
 import { useInput } from 'ink';
-import { InputSystem } from '../systems/InputSystem.js';
+import { InputSystem } from '../../core/systems/InputSystem.js';
 
 // React hook to connect ink input to our InputSystem
 export function useInputSystem(inputSystem: InputSystem) {

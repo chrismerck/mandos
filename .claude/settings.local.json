@@ -3,7 +3,10 @@
     "allow": [
       "Bash(grep:*)",
       "Bash(sed:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(find:*)"
     ],
     "deny": []
   }

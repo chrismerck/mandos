@@ -8,11 +8,19 @@ import { MapData } from '../core/data/MapData.js';
 import { RegionData } from '../core/data/RegionData.js';
 import { MountainData } from '../core/data/MountainData.js';
 import { PoiRiverData } from '../core/data/PoiRiverData.js';
+import { ForestData } from '../core/data/ForestData.js';
 import { Position } from '../core/components/Position.js';
 import { Renderable } from '../core/components/Renderable.js';
 import { Player } from '../core/components/Player.js';
 import { Movable } from '../core/components/Movable.js';
+import { ViewMode } from '../core/components/ViewMode.js';
+import { LocalPosition } from '../core/components/LocalPosition.js';
 import { RegionDisplaySystem } from '../core/systems/RegionDisplaySystem.js';
+import { LocalMapGenerator } from '../core/local/LocalMapGenerator.js';
+import { LocalMapCache } from '../core/local/LocalMapCache.js';
+import { LocalViewportSystem } from '../core/systems/LocalViewportSystem.js';
+import { LocalMovementSystem } from '../core/systems/LocalMovementSystem.js';
+import { LocalRenderSystem } from '../core/systems/LocalRenderSystem.js';
 import { WebDataLoader } from './WebDataLoader.js';
 import { CanvasDisplay } from './CanvasDisplay.js';
 import type { StyledTile } from '../shared/StyledTile.js';
@@ -33,6 +41,16 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
   const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData, mountainData));
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem, mountainData));
   const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData, poiRiverData));
+  const [forestData] = useState(() => new ForestData(dataLoader));
+  const [localMapCache] = useState(() => new LocalMapCache());
+  const [viewMode, setViewMode] = useState<'world' | 'local'>('world');
+  const viewModeRef = useRef<'world' | 'local'>('world');
+  const localSystemsRef = useRef<{
+    generator: LocalMapGenerator;
+    viewportSys: LocalViewportSystem;
+    movementSys: LocalMovementSystem;
+    renderSys: LocalRenderSystem;
+  } | null>(null);
   const [mapDisplay, setMapDisplay] = useState<StyledTile[][]>([]);
   const [regionInfo, setRegionInfo] = useState<{ realm: string; subRegion: string; poiName: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +89,10 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
   useEffect(() => {
     viewportSystem.setViewportSize(viewportSize.width, viewportSize.height);
   }, [viewportSystem, viewportSize]);
+
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+  }, [viewMode]);
 
   // Keyboard input handling
   useEffect(() => {
@@ -119,12 +141,53 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         case '3':
           inputSystem.setDirection('down-right');
           break;
+        case 'm':
+        case 'M': {
+          const player = world.getEntitiesWithComponent('Player')[0];
+          if (!player || !localSystemsRef.current) break;
+
+          const currentMode = player.getComponent<ViewMode>('ViewMode');
+          if (!currentMode || currentMode.mode === 'world') {
+            const pos = player.getComponent<Position>('Position')!;
+
+            if (!player.hasComponent('ViewMode')) {
+              player.addComponent(new ViewMode('local'));
+            } else {
+              currentMode!.mode = 'local';
+            }
+
+            if (!player.hasComponent('LocalPosition')) {
+              player.addComponent(new LocalPosition(pos.x, pos.y, 21, 21));
+            } else {
+              const lp = player.getComponent<LocalPosition>('LocalPosition')!;
+              lp.wx = pos.x;
+              lp.wy = pos.y;
+              lp.lx = 21;
+              lp.ly = 21;
+            }
+
+            localSystemsRef.current.movementSys.ensureNeighborsGenerated(pos.x, pos.y);
+            setViewMode('local');
+          } else {
+            currentMode.mode = 'world';
+
+            const lp = player.getComponent<LocalPosition>('LocalPosition');
+            if (lp) {
+              const pos = player.getComponent<Position>('Position')!;
+              pos.x = lp.wx;
+              pos.y = lp.wy;
+            }
+
+            setViewMode('world');
+          }
+          break;
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [inputSystem]);
+  }, [inputSystem, world]);
 
   // Load game data and initialize
   useEffect(() => {
@@ -134,6 +197,18 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         await regionData.loadFromFile('middle_earth_regions.bin', 'middle_earth_pois.csv');
         await mountainData.loadFromFile('middle_earth_mountains.bin');
         await poiRiverData.loadFromFile('middle_earth_poi_rivers.bin');
+        await forestData.loadFromFile('middle_earth_forests.bin');
+
+        const localGenerator = new LocalMapGenerator(mapData, forestData, 42);
+        const localViewportSys = new LocalViewportSystem(localMapCache);
+        const localMovementSys = new LocalMovementSystem(inputSystem, localMapCache, localGenerator);
+        const localRenderSys = new LocalRenderSystem(localViewportSys);
+        localSystemsRef.current = {
+          generator: localGenerator,
+          viewportSys: localViewportSys,
+          movementSys: localMovementSys,
+          renderSys: localRenderSys,
+        };
 
         // Create player entity only once
         const players = world.getEntitiesWithComponent('Player');
@@ -160,7 +235,7 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
     };
     
     loadData();
-  }, [world, mapData, regionData, mountainData, poiRiverData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
+  }, [world, mapData, regionData, mountainData, poiRiverData, forestData, localMapCache, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
 
   // Game loop
   useEffect(() => {
@@ -171,11 +246,20 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
     const gameLoop = (currentTime: number) => {
       const deltaTime = currentTime - lastTime;
       lastTime = currentTime;
-      
-      world.update(deltaTime);
-      setMapDisplay(renderSystem.getStyledMap());
-      setRegionInfo(regionDisplaySystem.getPlayerRegionInfo(world));
-      
+
+      if (viewModeRef.current === 'world') {
+        world.update(deltaTime);
+        setMapDisplay(renderSystem.getStyledMap());
+        setRegionInfo(regionDisplaySystem.getPlayerRegionInfo(world));
+      } else if (localSystemsRef.current) {
+        inputSystem.update(world, deltaTime);
+        localSystemsRef.current.movementSys.update(world, deltaTime);
+        localSystemsRef.current.viewportSys.update(world, deltaTime);
+        localSystemsRef.current.renderSys.update(world, deltaTime);
+        setMapDisplay(localSystemsRef.current.renderSys.getStyledMap());
+        setRegionInfo(null);
+      }
+
       animationFrameRef.current = requestAnimationFrame(gameLoop);
     };
     
@@ -236,7 +320,11 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         color: '#888',
         fontSize: '14px'
       }}>
-        <div>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You</div>
+        <div>
+          {viewMode === 'world'
+            ? 'Numpad/hjklyubn/Arrows to move | M = Enter local view | @ = You'
+            : 'Numpad/hjklyubn/Arrows to move | M = World map | @ = You'}
+        </div>
         {regionInfo && (
           <div style={{ color: '#00ffff', marginTop: '5px' }}>
             {regionInfo.poiName

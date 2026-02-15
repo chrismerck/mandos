@@ -52,25 +52,47 @@ def _scan_labels(grid: List[List[str]], prefix: str) -> List[Dict[str, Any]]:
     return labels
 
 
-def _find_nearest_town(grid: List[List[str]], row: int, col: int,
-                       claimed: set | None = None) -> Tuple[int, int] | None:
-    """BFS (8-connected) from (row, col) to find nearest unclaimed 'o' tile."""
+def _assign_pois_simultaneous(grid: List[List[str]],
+                               labels: List[Dict[str, Any]]) -> None:
+    """
+    Simultaneous BFS from all ! label positions (8-connected).
+    The first 'o' tile each label's wavefront reaches is assigned to that label.
+    Uses per-label seen sets so one label's expansion doesn't block another.
+    Mutates each label dict to add 'town' key: (row, col) or None.
+    """
     H = len(grid)
     W = len(grid[0]) if grid else 0
-    if claimed is None:
-        claimed = set()
-    seen = {(row, col)}
-    q = collections.deque([(row, col)])
+    q = collections.deque()
+    seen_per_label: List[set] = []
+
+    for i, lbl in enumerate(labels):
+        r, c = lbl['row'], lbl['col']
+        s = {(r, c)}
+        seen_per_label.append(s)
+        q.append((r, c, i))
+
+    claimed_towns: set = set()
+
     while q:
-        r, c = q.popleft()
+        r, c, idx = q.popleft()
+        lbl = labels[idx]
+        if 'town' in lbl:
+            continue
+
+        if grid[r][c] == 'o' and (r, c) not in claimed_towns:
+            lbl['town'] = (r, c)
+            claimed_towns.add((r, c))
+            continue
+
         for dr, dc in DIRS8:
             nr, nc = r + dr, c + dc
-            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in seen:
-                seen.add((nr, nc))
-                if grid[nr][nc] == 'o' and (nr, nc) not in claimed:
-                    return (nr, nc)
-                q.append((nr, nc))
-    return None
+            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in seen_per_label[idx]:
+                seen_per_label[idx].add((nr, nc))
+                q.append((nr, nc, idx))
+
+    for lbl in labels:
+        if 'town' not in lbl:
+            lbl['town'] = None
 
 
 def _classify_at_labels(grid: List[List[str]], labels: List[Dict[str, Any]]) -> None:
@@ -210,13 +232,11 @@ def build_poi_river_grid(grid: List[List[str]], H: int, W: int,
     at_labels = _scan_labels(grid, '@')
     clean = _clean_labels_from_grid(grid)
 
-    # 1) POI labels: !Name -> nearest unclaimed 'o' tile
-    claimed: set = set()
+    # 1) POI labels: simultaneous BFS to assign each label its nearest 'o' tile
+    _assign_pois_simultaneous(clean, poi_labels)
     for lbl in poi_labels:
-        town = _find_nearest_town(clean, lbl['row'], lbl['col'], claimed)
-        if town is not None:
-            claimed.add(town)
-            tr, tc = town
+        if lbl['town'] is not None:
+            tr, tc = lbl['town']
             poi_grid[tr, tc] = next_id
             display_name = name_lookup.get(lbl['name'], lbl['name'])
             names.append(display_name)

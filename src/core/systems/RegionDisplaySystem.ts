@@ -4,51 +4,47 @@ import { Position } from '../components/Position.js';
 import { Player } from '../components/Player.js';
 import { RegionInfo } from '../components/RegionInfo.js';
 import { RegionData } from '../data/RegionData.js';
+import { PoiRiverData } from '../data/PoiRiverData.js';
 
 export class RegionDisplaySystem extends System {
-  constructor(private regionData: RegionData) {
+  constructor(private regionData: RegionData, private poiRiverData?: PoiRiverData) {
     super();
   }
-  
+
   update(world: World, deltaTime: number): void {
-    // Find all player entities
     const players = world.getEntitiesWithComponent('Player');
-    
+
     for (const entity of players) {
       const position = entity.getComponent('Position') as Position;
       const player = entity.getComponent('Player') as Player;
-      
+
       if (position && player) {
-        // Get or create RegionInfo component
         let regionInfo = entity.getComponent('RegionInfo') as RegionInfo;
         if (!regionInfo) {
           regionInfo = new RegionInfo();
           entity.addComponent(regionInfo);
         }
-        
-        // Look up current region
-        const region = this.regionData.getRegionInfo(position.x, position.y);
-        
-        if (region) {
-          // Show both realm and geographic feature when in a geographic feature
-          if (region.geoFeatureName) {
-            // Show realm name and geographic feature name
-            if (regionInfo.realmName !== region.realmName || 
-                regionInfo.subRegionName !== region.geoFeatureName) {
+
+        const rawPoiName = this.poiRiverData?.getPoiName(position.x, position.y) ?? null;
+        const poiName = rawPoiName ? PoiRiverData.formatName(rawPoiName) : '';
+
+        if (poiName) {
+          regionInfo.realmName = '';
+          regionInfo.subRegionName = '';
+          regionInfo.poiName = poiName;
+        } else {
+          regionInfo.poiName = '';
+          const region = this.regionData.getRegionInfo(position.x, position.y);
+
+          if (region) {
+            if (region.geoFeatureName) {
               regionInfo.realmName = region.realmName;
               regionInfo.subRegionName = region.geoFeatureName;
-            }
-          } else {
-            // Show realm/region names
-            if (regionInfo.realmName !== region.realmName || 
-                regionInfo.subRegionName !== region.subRegionName) {
+            } else {
               regionInfo.realmName = region.realmName;
               regionInfo.subRegionName = region.subRegionName;
             }
-          }
-        } else {
-          // Outside any region
-          if (regionInfo.realmName !== 'The Wilds' || regionInfo.subRegionName !== '') {
+          } else {
             regionInfo.realmName = 'The Wilds';
             regionInfo.subRegionName = '';
           }
@@ -56,20 +52,21 @@ export class RegionDisplaySystem extends System {
       }
     }
   }
-  
-  getPlayerRegionInfo(world: World): { realm: string; subRegion: string } | null {
+
+  getPlayerRegionInfo(world: World): { realm: string; subRegion: string; poiName: string } | null {
     const players = world.getEntitiesWithComponent('Player');
-    
+
     for (const entity of players) {
       const regionInfo = entity.getComponent('RegionInfo') as RegionInfo;
       if (regionInfo) {
         return {
           realm: regionInfo.realmName,
-          subRegion: regionInfo.subRegionName
+          subRegion: regionInfo.subRegionName,
+          poiName: regionInfo.poiName
         };
       }
     }
-    
+
     return null;
   }
 }

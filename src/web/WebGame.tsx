@@ -7,6 +7,7 @@ import { MovementSystem } from '../core/systems/MovementSystem.js';
 import { MapData } from '../core/data/MapData.js';
 import { RegionData } from '../core/data/RegionData.js';
 import { MountainData } from '../core/data/MountainData.js';
+import { PoiRiverData } from '../core/data/PoiRiverData.js';
 import { Position } from '../core/components/Position.js';
 import { Renderable } from '../core/components/Renderable.js';
 import { Player } from '../core/components/Player.js';
@@ -26,13 +27,14 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
   const [mapData] = useState(() => new MapData(dataLoader));
   const [regionData] = useState(() => new RegionData(dataLoader));
   const [mountainData] = useState(() => new MountainData(dataLoader));
+  const [poiRiverData] = useState(() => new PoiRiverData(dataLoader));
   const [inputSystem] = useState(() => new InputSystem());
   const [viewportSystem] = useState(() => new ViewportSystem(mapData));
   const [movementSystem] = useState(() => new MovementSystem(inputSystem, mapData, mountainData));
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem, mountainData));
-  const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData));
+  const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData, poiRiverData));
   const [mapDisplay, setMapDisplay] = useState<StyledTile[][]>([]);
-  const [regionInfo, setRegionInfo] = useState<{ realm: string; subRegion: string } | null>(null);
+  const [regionInfo, setRegionInfo] = useState<{ realm: string; subRegion: string; poiName: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const animationFrameRef = useRef<number>();
@@ -131,7 +133,8 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         await mapData.loadFromFile(mapFile);
         await regionData.loadFromFile('middle_earth_regions.bin', 'middle_earth_pois.csv');
         await mountainData.loadFromFile('middle_earth_mountains.bin');
-        
+        await poiRiverData.loadFromFile('middle_earth_poi_rivers.bin');
+
         // Create player entity only once
         const players = world.getEntitiesWithComponent('Player');
         if (players.length === 0) {
@@ -157,7 +160,7 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
     };
     
     loadData();
-  }, [world, mapData, regionData, mountainData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
+  }, [world, mapData, regionData, mountainData, poiRiverData, inputSystem, viewportSystem, movementSystem, renderSystem, regionDisplaySystem, mapFile]);
 
   // Game loop
   useEffect(() => {
@@ -236,8 +239,13 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         <div>Numpad/hjklyubn/Arrows to move (8 directions) | @ = You</div>
         {regionInfo && (
           <div style={{ color: '#00ffff', marginTop: '5px' }}>
-            {regionInfo.realm}
-            {regionInfo.subRegion && ` - ${regionInfo.subRegion}`}
+            {regionInfo.poiName
+              ? `[${regionInfo.poiName}]`
+              : <>
+                  {regionInfo.realm}
+                  {regionInfo.subRegion && ` - ${regionInfo.subRegion}`}
+                </>
+            }
           </div>
         )}
       </div>

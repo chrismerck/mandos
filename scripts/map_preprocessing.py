@@ -130,7 +130,7 @@ def process_map(map_path, output_grid_path, output_poi_path, output_poi_river_pa
     grid = clean_grid
 
     # 4b) POI and river/road detection (use clean_grid so realm/geo labels are gone)
-    poi_grid, poi_names = build_poi_river_grid(grid, H, W)
+    poi_grid, poi_names = build_poi_river_grid(grid, H, W, os.path.dirname(map_path))
 
     # 5) Build movement cost grid (uses cleaned terrain)
     cost = build_cost_grid(grid, water_mask, H, W)

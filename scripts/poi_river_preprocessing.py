@@ -11,7 +11,7 @@ Returns:
     poi_names   – list[str] giving the display name for each ID
 """
 from __future__ import annotations
-import collections, numpy as np, heapq
+import collections, csv, os, numpy as np, heapq
 from typing import List, Tuple, Dict, Any
 
 LABEL_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_'0123456789")
@@ -52,10 +52,13 @@ def _scan_labels(grid: List[List[str]], prefix: str) -> List[Dict[str, Any]]:
     return labels
 
 
-def _find_nearest_town(grid: List[List[str]], row: int, col: int) -> Tuple[int, int] | None:
-    """BFS (8-connected) from (row, col) to find nearest 'o' tile."""
+def _find_nearest_town(grid: List[List[str]], row: int, col: int,
+                       claimed: set | None = None) -> Tuple[int, int] | None:
+    """BFS (8-connected) from (row, col) to find nearest unclaimed 'o' tile."""
     H = len(grid)
     W = len(grid[0]) if grid else 0
+    if claimed is None:
+        claimed = set()
     seen = {(row, col)}
     q = collections.deque([(row, col)])
     while q:
@@ -64,7 +67,7 @@ def _find_nearest_town(grid: List[List[str]], row: int, col: int) -> Tuple[int, 
             nr, nc = r + dr, c + dc
             if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in seen:
                 seen.add((nr, nc))
-                if grid[nr][nc] == 'o':
+                if grid[nr][nc] == 'o' and (nr, nc) not in claimed:
                     return (nr, nc)
                 q.append((nr, nc))
     return None
@@ -176,7 +179,20 @@ def _clean_labels_from_grid(grid: List[List[str]]) -> List[List[str]]:
     return clean
 
 
-def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndarray, List[str]]:
+def _load_name_lookup(map_dir: str) -> Dict[str, str]:
+    """Load poi_names.csv lookup table mapping abbreviated map labels to display names."""
+    path = os.path.join(map_dir, 'poi_names.csv')
+    lookup: Dict[str, str] = {}
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                lookup[row['map_label']] = row['display_name']
+    return lookup
+
+
+def build_poi_river_grid(grid: List[List[str]], H: int, W: int,
+                         map_dir: str = 'maps') -> Tuple[np.ndarray, List[str]]:
     """
     Main entrypoint. Scans grid for !Name and @Name labels,
     builds a per-tile POI/river ID grid.
@@ -188,25 +204,29 @@ def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndar
     poi_grid = np.full((H, W), 255, dtype=np.uint8)
     names: List[str] = []
     next_id = 0
+    name_lookup = _load_name_lookup(map_dir)
 
     poi_labels = _scan_labels(grid, '!')
     at_labels = _scan_labels(grid, '@')
     clean = _clean_labels_from_grid(grid)
 
-    # 1) POI labels: !Name -> nearest 'o' tile (use clean grid for BFS)
+    # 1) POI labels: !Name -> nearest unclaimed 'o' tile
+    claimed: set = set()
     for lbl in poi_labels:
-        town = _find_nearest_town(clean, lbl['row'], lbl['col'])
+        town = _find_nearest_town(clean, lbl['row'], lbl['col'], claimed)
         if town is not None:
+            claimed.add(town)
             tr, tc = town
-            if poi_grid[tr, tc] == 255:
-                poi_grid[tr, tc] = next_id
-                names.append(lbl['name'])
-                next_id += 1
+            poi_grid[tr, tc] = next_id
+            display_name = name_lookup.get(lbl['name'], lbl['name'])
+            names.append(display_name)
+            next_id += 1
 
-    # 2) River/road labels: @Name -> flood-fill connected tiles (use clean grid)
+    # 2) River/road labels: @Name -> flood-fill connected tiles
     _classify_at_labels(clean, at_labels)
     river_names, next_id = _flood_fill_from_seeds(clean, at_labels, poi_grid, next_id)
-    names.extend(river_names)
+    for rn in river_names:
+        names.append(name_lookup.get(rn, rn))
 
     return poi_grid, names
 

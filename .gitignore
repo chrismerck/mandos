@@ -10,7 +10,9 @@ coverage/
 
 # Generated map data
 maps/*.bin
-maps/*.csv
+maps/middle_earth_pois.csv
+# Hand-authored map data (tracked)
+!maps/poi_names.csv
 
 # Git worktrees
 .worktrees/

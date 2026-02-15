@@ -154,3 +154,50 @@ def _flood_fill_from_seeds(grid: List[List[str]], labels: List[Dict[str, Any]],
                     q.append((nr, nc, fid, ftype))
 
     return names, next_id + len(names)
+
+
+def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndarray, List[str]]:
+    """
+    Main entrypoint. Scans grid for !Name and @Name labels,
+    builds a per-tile POI/river ID grid.
+
+    Returns:
+        poi_grid  – H×W uint8 array (255 = no POI)
+        poi_names – list of display names indexed by ID
+    """
+    poi_grid = np.full((H, W), 255, dtype=np.uint8)
+    names: List[str] = []
+    next_id = 0
+
+    # 1) POI labels: !Name -> nearest 'o' tile
+    poi_labels = _scan_labels(grid, '!')
+    for lbl in poi_labels:
+        town = _find_nearest_town(grid, lbl['row'], lbl['col'])
+        if town is not None:
+            tr, tc = town
+            if poi_grid[tr, tc] == 255:
+                poi_grid[tr, tc] = next_id
+                names.append(lbl['name'])
+                next_id += 1
+
+    # 2) River/road labels: @Name -> flood-fill connected tiles
+    at_labels = _scan_labels(grid, '@')
+    _classify_at_labels(grid, at_labels)
+    river_names, next_id = _flood_fill_from_seeds(grid, at_labels, poi_grid, next_id)
+    names.extend(river_names)
+
+    return poi_grid, names
+
+
+def write_poi_binary(path: str, poi_grid: np.ndarray, names: List[str], W: int, H: int) -> None:
+    """Write POI1 format binary file."""
+    import struct
+    with open(path, 'wb') as f:
+        f.write(b'POI1')
+        f.write(struct.pack('<HHH', 1, W, H))
+        f.write(poi_grid.ravel().tobytes())
+        f.write(struct.pack('B', len(names)))
+        for nm in names:
+            b = nm.encode('utf-8')
+            f.write(struct.pack('B', len(b)))
+            f.write(b)

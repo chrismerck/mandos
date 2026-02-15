@@ -5,6 +5,7 @@ import os, sys, heapq, collections, struct, csv, numpy as np
 #  Imports for new geographic feature support
 # --------------------------------------------------------------------------- #
 from geo_features_preprocessing import build_geo_feature_grid
+from poi_river_preprocessing import build_poi_river_grid, write_poi_binary
 
 # ---------------- Load map -------------------------------------------------- #
 def load_map(map_path):
@@ -109,7 +110,7 @@ def multi_dijkstra(seeds, cost, H, W, restrict=None):
     return owner
 
 # ---------------- Main processing ------------------------------------------ #
-def process_map(map_path, output_grid_path, output_poi_path):
+def process_map(map_path, output_grid_path, output_poi_path, output_poi_river_path):
     # 1) Load map
     grid, H, W = load_map(map_path)
 
@@ -127,6 +128,9 @@ def process_map(map_path, output_grid_path, output_poi_path):
 
     # Swap in the cleaned grid for all subsequent processing
     grid = clean_grid
+
+    # 4b) POI and river/road detection
+    poi_grid, poi_names = build_poi_river_grid(original_grid, H, W)
 
     # 5) Build movement cost grid (uses cleaned terrain)
     cost = build_cost_grid(grid, water_mask, H, W)
@@ -214,18 +218,24 @@ def process_map(map_path, output_grid_path, output_poi_path):
             writer.writerow([geo_names[fid], r, c, -1, -1, fid, 'GeoFeature'])
 
     # --------------------------------------------------------------------- #
-    # 12) Done
+    # 12) Write POI/river binary
+    # --------------------------------------------------------------------- #
+    write_poi_binary(output_poi_river_path, poi_grid, poi_names, W, H)
+
+    # --------------------------------------------------------------------- #
+    # 13) Done
     # --------------------------------------------------------------------- #
     print(f"Processed {W}×{H} map")
     print(f"Realms        : {len(realm_names)}")
     print(f"Sub-realms    : {len(sub_names)}")
     print(f"Geo-features  : {len(geo_names)}")
+    print(f"POI/River names: {len(poi_names)}")
     print(f"Binary grid   : {output_grid_path}")
     print(f"POI csv       : {output_poi_path}")
 
 # ---------------- CLI wrapper ---------------------------------------------- #
 if __name__ == "__main__":
-    if len(sys.argv) != 4:
-        print("Usage: python map_preprocessing.py <input_map> <output_grid> <output_poi>")
+    if len(sys.argv) != 5:
+        print("Usage: python map_preprocessing.py <input_map> <output_grid> <output_poi> <output_poi_river>")
         sys.exit(1)
-    process_map(sys.argv[1], sys.argv[2], sys.argv[3])
+    process_map(sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4])

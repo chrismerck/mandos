@@ -11,7 +11,8 @@
     "test:watch": "jest --watch",
     "preprocess-map": "python3 scripts/map_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_regions.bin maps/middle_earth_pois.csv maps/middle_earth_poi_rivers.bin",
     "preprocess-mountains": "python3 scripts/mountain_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_mountains.bin",
-    "preprocess": "npm run preprocess-map && npm run preprocess-mountains",
+    "preprocess-forests": "python3 scripts/forest_depth_preprocessing.py maps/middle_earth.worldmap maps/middle_earth_forests.bin",
+    "preprocess": "npm run preprocess-map && npm run preprocess-mountains && npm run preprocess-forests",
     "check-map": "python3 scripts/check_and_preprocess.py",
     "prebuild": "npm run check-map"
   },

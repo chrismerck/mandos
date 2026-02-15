@@ -68,3 +68,89 @@ def _find_nearest_town(grid: List[List[str]], row: int, col: int) -> Tuple[int, 
                     return (nr, nc)
                 q.append((nr, nc))
     return None
+
+
+def _classify_at_labels(grid: List[List[str]], labels: List[Dict[str, Any]]) -> None:
+    """
+    Simultaneous BFS from all @ label positions.
+    The first river (|, -, +) or road (.) tile each label reaches
+    determines whether it's a 'river' or 'road'.
+    Mutates each label dict to add 'type' and 'seed' keys.
+    """
+    H = len(grid)
+    W = len(grid[0]) if grid else 0
+    label_map = {}
+    q = collections.deque()
+    seen = set()
+
+    for i, lbl in enumerate(labels):
+        r, c = lbl['row'], lbl['col']
+        seen.add((r, c))
+        label_map[(r, c)] = i
+        q.append((r, c, i))
+
+    while q:
+        r, c, idx = q.popleft()
+        lbl = labels[idx]
+        if 'type' in lbl:
+            continue
+
+        ch = grid[r][c]
+        if ch in RIVER_CHARS:
+            lbl['type'] = 'river'
+            lbl['seed'] = (r, c)
+            continue
+        if ch in ROAD_CHARS:
+            lbl['type'] = 'road'
+            lbl['seed'] = (r, c)
+            continue
+
+        for dr, dc in DIRS8:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in seen:
+                seen.add((nr, nc))
+                q.append((nr, nc, idx))
+
+    for lbl in labels:
+        if 'type' not in lbl:
+            lbl['type'] = None
+            lbl['seed'] = None
+
+
+def _flood_fill_from_seeds(grid: List[List[str]], labels: List[Dict[str, Any]],
+                           poi_grid: np.ndarray, next_id: int) -> Tuple[List[str], int]:
+    """
+    Multi-source flood-fill: each classified @-label floods along connected
+    tiles of its type (river or road). Uses simultaneous BFS so when two
+    named features collide, first-come-first-served.
+
+    Returns (names_added, next_id_after).
+    """
+    H = len(grid)
+    W = len(grid[0]) if grid else 0
+    names = []
+    q = collections.deque()
+
+    for lbl in labels:
+        if lbl['seed'] is None:
+            continue
+        fid = next_id + len(names)
+        lbl['fid'] = fid
+        names.append(lbl['name'])
+        sr, sc = lbl['seed']
+        if poi_grid[sr, sc] == 255:
+            poi_grid[sr, sc] = fid
+            q.append((sr, sc, fid, lbl['type']))
+
+    while q:
+        r, c, fid, ftype = q.popleft()
+        target_chars = RIVER_CHARS if ftype == 'river' else ROAD_CHARS
+        for dr, dc in DIRS4:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < H and 0 <= nc < W and poi_grid[nr, nc] == 255:
+                ch = grid[nr][nc]
+                if ch in target_chars:
+                    poi_grid[nr, nc] = fid
+                    q.append((nr, nc, fid, ftype))
+
+    return names, next_id + len(names)

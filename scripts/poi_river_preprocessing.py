@@ -50,3 +50,21 @@ def _scan_labels(grid: List[List[str]], prefix: str) -> List[Dict[str, Any]]:
                 continue
             c += 1
     return labels
+
+
+def _find_nearest_town(grid: List[List[str]], row: int, col: int) -> Tuple[int, int] | None:
+    """BFS (8-connected) from (row, col) to find nearest 'o' tile."""
+    H = len(grid)
+    W = len(grid[0]) if grid else 0
+    seen = {(row, col)}
+    q = collections.deque([(row, col)])
+    while q:
+        r, c = q.popleft()
+        for dr, dc in DIRS8:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in seen:
+                seen.add((nr, nc))
+                if grid[nr][nc] == 'o':
+                    return (nr, nc)
+                q.append((nr, nc))
+    return None

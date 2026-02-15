@@ -44,8 +44,8 @@ jobs:
       - name: Copy map files to public
         run: cp maps/*.bin maps/*.csv maps/*.worldmap public/maps/
 
-      - name: Build web version
-        run: npm run build:web -- --mode production
+      - name: Build
+        run: npm run build -- --mode production
         env:
           NODE_ENV: production
 

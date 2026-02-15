@@ -6,7 +6,7 @@ interface CanvasDisplayProps {
   tiles: StyledTile[][];
 }
 
-// Convert terminal colors to web colors
+// Color name to hex mapping
 const colorMap: Record<string, string> = {
   // Basic colors
   'black': '#000000',

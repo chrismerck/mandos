@@ -1,6 +1,6 @@
-# Mandos2 - Middle Earth Terminal Map Game
+# Mandos2 - Middle Earth Map Game
 
-An ADOM-inspired map exploration game built with TypeScript and an Entity Component System (ECS) architecture. Available in both terminal (React Ink) and web (Canvas) versions.
+An ADOM-inspired map exploration game built with TypeScript and an Entity Component System (ECS) architecture, rendered in the browser using Canvas 2D.
 
 ## Completed Features
 
@@ -10,7 +10,7 @@ Basic viewport rendering of Middle Earth map:
 - Map data loader for ASCII worldmap
 - Viewport system (80x20 view)
 - Render system
-- React Ink terminal UI
+- Canvas-based web UI
 
 ### Phase 2 ✓
 Player navigation:
@@ -23,41 +23,28 @@ Player navigation:
 
 ## Running the Game
 
-### Terminal Version
 ```bash
 npm install
 npm start
-# or
-npm run start:terminal
-```
-
-### Web Version
-```bash
-npm install
-npm run start:web
 # Open http://localhost:3000 in your browser
 ```
 
 ### Building
-```bash
-# Terminal version
-npm run build
 
-# Web version  
-npm run build:web
+```bash
+npm run build
 ```
 
 ### Controls
 - **Numpad (1-9)** - 8-directional movement (classic roguelike)
   - 7 8 9
-  - 4 · 6  
+  - 4 · 6
   - 1 2 3
 - **Vi-keys** - 8-directional movement
   - y k u
   - h · l
   - b j n
 - **Arrow keys** - 4-directional movement
-- **Ctrl+C** - Exit game
 
 ## Testing
 
@@ -73,7 +60,8 @@ npm test:watch    # Run tests in watch mode
   - Components: Position, Renderable, Movable, Player
   - Systems: ViewportSystem, RenderSystem, InputSystem, MovementSystem
 - **TypeScript**: Type-safe development with ESM modules
-- **React Ink**: Terminal UI with hooks
+- **React + Canvas 2D**: Web rendering
+- **Vite**: Bundler and dev server
 - **Jest**: Unit testing with ts-jest
 
 ## Map Legend

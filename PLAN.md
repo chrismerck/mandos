@@ -1,4 +1,4 @@
-# ADOM-Inspired Terminal Map Game with ECS (TypeScript + React Ink)
+# ADOM-Inspired Map Game with ECS (TypeScript + Canvas 2D)
 
 ## Core Architecture: Entity Component System (ECS)
 - **Entities**: Player, Locations, Terrain features
@@ -9,7 +9,7 @@
 
 ### Phase 1: Basic Viewport ✓ MVP
 1. **Setup**
-   - Initialize TypeScript project with React Ink
+   - Initialize TypeScript project with React + Vite
    - Configure tsconfig.json, jest for testing
    - Basic ECS framework setup
 

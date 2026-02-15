@@ -39,6 +39,6 @@ After deployment, it will be available at: `https://[your-username].github.io/ma
 ## Technical Details
 
 - Uses Canvas 2D for rendering ASCII graphics
-- Loads the same binary map data as the terminal version
+- Loads binary map data files
 - Supports viewport resizing based on window size
 - 60 FPS game loop using requestAnimationFrame

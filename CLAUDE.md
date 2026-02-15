@@ -1,65 +1,79 @@
-# Mandos2 - Middle Earth Terminal Map Game
+# Mandos2 - Middle Earth Map Game
 
 ## Purpose
-ADOM-inspired roguelike terminal game for exploring a Middle Earth ASCII map using React Ink and TypeScript with an Entity Component System (ECS) architecture.
+ADOM-inspired roguelike game for exploring a Middle Earth ASCII map using TypeScript with an Entity Component System (ECS) architecture. Web-based using Canvas 2D rendering.
 
 ## Architecture
 
-### ECS Core (`src/ecs/`)
+### Structure
+- **src/core/**: Game logic
+- **src/web/**: Web UI using Canvas 2D
+- **src/shared/**: Shared interfaces (DataLoader, StyledTile)
+
+### ECS Core (`src/core/ecs/`)
 - **Entity.ts**: Container with unique ID holding components via Map<string, Component>
 - **Component.ts**: Interface with `type: string` property
 - **System.ts**: Abstract class with `update(world: World, deltaTime: number)` method
 - **World.ts**: Manages entities, runs systems, provides `getEntitiesWithComponent()`
 
-### Components (`src/components/`)
+### Components (`src/core/components/`)
 - **Position.ts**: `x: number, y: number` - world coordinates
 - **Renderable.ts**: `char: string, priority: number, color?: Color` - visual representation
 - **Movable.ts**: `speed: number` - movement capability
 - **Player.ts**: Tag component to identify player entity
 
-### Systems (`src/systems/`)
+### Systems (`src/core/systems/`)
 - **InputSystem.ts**: Captures keyboard input, stores current Direction
 - **MovementSystem.ts**: Updates Position based on InputSystem direction, checks collision
 - **ViewportSystem.ts**: Maintains 80x20 view centered on player
 - **RenderSystem.ts**: Creates StyledTile[][] combining map + entities
 - **TerrainColors.ts**: Color mappings for terrain types
 
-### Map Data
-- **MapData.ts**: Loads `maps/middle_earth.worldmap`, provides `getTile()` and `getViewport()`
-- Terrain types: `=` ocean, `-|` rivers, `^` mountains, `&` forests, `.` roads, `o` towns
-- Collision detection in MovementSystem: Can't walk on `=`, `~`, `^`
+### Map Data (`src/core/data/`)
+- **MapData.ts**: Loads ASCII worldmap asynchronously via DataLoader
+- **RegionData.ts**: Loads binary region data and POI CSV
+- **MountainData.ts**: Loads binary mountain depth data
+- **DataLoader interface**: File loading via fetch()
+  - **WebDataLoader**: Uses fetch() for web version
+- Terrain types: `=` ocean, `-|` rivers (both use same blue color), `^` mountains, `&` forests, `.` roads, `o` towns
+- Collision detection: Can't walk on `=`, `^`, or deep mountains
 
-### UI Components
-- **Game.tsx**: Main game loop, creates player entity, manages systems
-- **MapDisplay.tsx**: Renders StyledTile[][] with Text components, groups by style
-- **index.tsx**: Entry point, sets up ink render()
-- **hooks/useInputSystem.ts**: React hook connecting ink's useInput to InputSystem
+### Web UI (`src/web/`)
+- **WebGame.tsx**: React game component with Canvas rendering
+- **CanvasDisplay.tsx**: Renders StyledTile[][] on HTML5 Canvas
+- **index.tsx**: Entry point using React DOM
+- Keyboard event handling for input
+- Responsive viewport sizing based on window dimensions
 
 ### Key Patterns
 - All imports use `.js` extensions (ESM modules)
-- Systems execute order: Input → Movement → Viewport → Render  
-- Player entity has: Position(50,50), Renderable('@', 10, 'yellowBright'), Movable(1), Player()
-- Tests in `__tests__` folders use Jest with ts-jest
+- Async data loading pattern
+- Systems execute order: Input → Movement → RegionDisplay → Viewport → Render
+- Player starts at Hobbiton: Position(145, 49), Renderable('@', 10, 'yellowBright')
+- Entity lookup uses component type strings: `world.getEntitiesWithComponent('Player')`
+- Binary data parsing uses Uint8Array/DataView
 
 ### Commands
 ```bash
-npm test     # Run tests
-npm start    # Run game (requires TTY)
-npm build    # TypeScript compilation
-npm run preprocess-map  # Regenerate region data from map
+npm start              # Start web dev server (localhost:3000)
+npm run build          # Build for production
+npm run preview        # Preview production build
+npm test              # Run tests
+npm run preprocess    # Regenerate all map data
 ```
 
 ## Development Notes
 
 ### TypeScript Configuration
-- Uses `"moduleResolution": "bundler"` for compatibility with ink v6
+- Uses `"moduleResolution": "bundler"`
 - ESM modules with `.js` extensions in imports (even for .ts files)
 - Strict mode enabled
 
 ### Dependencies
-- **ink v6**: Terminal UI framework (provides own TypeScript types, no @types/ink needed)
-- **React 19**: Used by ink for component model
-- **tsx**: For running TypeScript directly without compilation
+- **React 19**: UI component model
+- **react-dom**: Web rendering
+- **Vite**: Web bundler and dev server
+- **numpy**: Python dependency for map preprocessing
 
 ### Region System
 - **RegionData.ts**: Loads preprocessed binary region grid (maps/middle_earth_regions.bin)
@@ -77,20 +91,25 @@ npm run preprocess-map  # Regenerate region data from map
 - 48 geographic features detected in Middle Earth map
 
 ### Build Process
-- `npm run prebuild` automatically runs map preprocessing
-- Generates ~200KB binary grid + POI CSV from 100KB ASCII map
-- Region lookups are O(1) using direct array indexing
+- Vite bundles to dist-web/ (excluded from git)
+- **GitHub Actions**: Automatic deployment to GitHub Pages
+- Map preprocessing generates binary files:
+  - ~300KB region grid (REG2 format)
+  - ~100KB mountain depth (MDEP format)
+  - ~3KB POI CSV
+- Binary files served as static assets
 
 ### Testing Considerations
-- Game requires TTY for input (won't work in non-interactive environments)
-- Use `npm run dev` for development with hot reload via tsx
-- Region data files must exist before running (generated by preprocessing)
+- Web version runs on any modern browser
+- tsconfig.web.json (includes DOM types)
+- Binary map files must exist (auto-generated on first run)
 
 ### Code Style
 - No comments unless explicitly requested
 - Prefer editing existing files over creating new ones
 - Follow existing patterns for components/systems
-- Use component composition for UI (Box, Text from ink)
+- Shared interfaces in shared/ folder
+- Error messages include file path and line number
 
 ## Communication Protocols
-- Let the developer know when you want to start the web server (give the command), and specify what it is you want them to look for/test. You DO NOT have the ability to test the web or terminal version yourself.
+- Let the developer know when you want to start the web server (give the command), and specify what it is you want them to look for/test. You DO NOT have the ability to test the web version yourself.

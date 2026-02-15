@@ -156,6 +156,26 @@ def _flood_fill_from_seeds(grid: List[List[str]], labels: List[Dict[str, Any]],
     return names, next_id + len(names)
 
 
+def _clean_labels_from_grid(grid: List[List[str]]) -> List[List[str]]:
+    """Return a deep copy of grid with all !Name, ?Name, @Name labels replaced by spaces."""
+    H = len(grid)
+    W = len(grid[0]) if grid else 0
+    clean = [row[:] for row in grid]
+    for r in range(H):
+        c = 0
+        while c < W:
+            ch = clean[r][c]
+            if ch in ('!', '?', '@') and c + 1 < W and _is_label_char(clean[r][c + 1]):
+                clean[r][c] = ' '
+                c += 1
+                while c < W and _is_label_char(clean[r][c]):
+                    clean[r][c] = ' '
+                    c += 1
+                continue
+            c += 1
+    return clean
+
+
 def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndarray, List[str]]:
     """
     Main entrypoint. Scans grid for !Name and @Name labels,
@@ -169,10 +189,13 @@ def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndar
     names: List[str] = []
     next_id = 0
 
-    # 1) POI labels: !Name -> nearest 'o' tile
     poi_labels = _scan_labels(grid, '!')
+    at_labels = _scan_labels(grid, '@')
+    clean = _clean_labels_from_grid(grid)
+
+    # 1) POI labels: !Name -> nearest 'o' tile (use clean grid for BFS)
     for lbl in poi_labels:
-        town = _find_nearest_town(grid, lbl['row'], lbl['col'])
+        town = _find_nearest_town(clean, lbl['row'], lbl['col'])
         if town is not None:
             tr, tc = town
             if poi_grid[tr, tc] == 255:
@@ -180,10 +203,9 @@ def build_poi_river_grid(grid: List[List[str]], H: int, W: int) -> Tuple[np.ndar
                 names.append(lbl['name'])
                 next_id += 1
 
-    # 2) River/road labels: @Name -> flood-fill connected tiles
-    at_labels = _scan_labels(grid, '@')
-    _classify_at_labels(grid, at_labels)
-    river_names, next_id = _flood_fill_from_seeds(grid, at_labels, poi_grid, next_id)
+    # 2) River/road labels: @Name -> flood-fill connected tiles (use clean grid)
+    _classify_at_labels(clean, at_labels)
+    river_names, next_id = _flood_fill_from_seeds(clean, at_labels, poi_grid, next_id)
     names.extend(river_names)
 
     return poi_grid, names

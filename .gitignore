@@ -11,3 +11,6 @@ coverage/
 # Generated map data
 maps/*.bin
 maps/*.csv
+
+# Git worktrees
+.worktrees/

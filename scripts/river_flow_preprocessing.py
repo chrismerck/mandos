@@ -9,13 +9,29 @@ RIVER_CHARS = set('-|+')
 DIRS4 = [(0, 1), (1, 0), (0, -1), (-1, 0)]
 
 
+POI_CHARS = set('o')
+
+
 def find_river_tiles(grid, H, W):
-    """Return set of (r, c) for all river tiles."""
+    """Return set of (r, c) for all river tiles, including POIs adjacent to rivers."""
     tiles = set()
     for r in range(H):
         for c in range(W):
             if grid[r][c] in RIVER_CHARS:
                 tiles.add((r, c))
+
+    poi_additions = set()
+    for r in range(H):
+        for c in range(W):
+            if grid[r][c] in POI_CHARS:
+                for dr, dc in DIRS4:
+                    nr, nc = r + dr, c + dc
+                    if (nr, nc) in tiles:
+                        poi_additions.add((r, c))
+                        break
+    tiles |= poi_additions
+    if poi_additions:
+        print(f"  Added {len(poi_additions)} POI tiles adjacent to rivers")
     return tiles
 
 

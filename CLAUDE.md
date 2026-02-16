@@ -112,4 +112,4 @@ npm run preprocess    # Regenerate all map data
 - Error messages include file path and line number
 
 ## Communication Protocols
-- Let the developer know when you want to start the web server (give the command), and specify what it is you want them to look for/test. You DO NOT have the ability to test the web version yourself.
+- When you want the developer to test something in the browser, start the dev server yourself (`npm start` in background) before asking them to look. Specify what to look for/test. You DO NOT have the ability to test the web version yourself.

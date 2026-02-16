@@ -49,7 +49,7 @@ describe('LocalMapGenerator', () => {
 
   test('should only contain valid characters', () => {
     const grid = generator.generateTile(4, 4);
-    const validChars = new Set(['T', '.', '&', '"']);
+    const validChars = new Set(['T', '.']);
     for (const row of grid) {
       for (const cell of row) {
         expect(validChars.has(cell)).toBe(true);

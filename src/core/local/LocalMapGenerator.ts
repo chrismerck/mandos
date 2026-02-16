@@ -1,6 +1,7 @@
 import { createNoise2D } from 'simplex-noise';
 import { MapData } from '../data/MapData.js';
 import { ForestData } from '../data/ForestData.js';
+import { RiverFlowData } from '../data/RiverFlowData.js';
 import { getDensityForDepth } from './ForestDensityConfig.js';
 
 const TILE_SIZE = 43;
@@ -34,6 +35,7 @@ export class LocalMapGenerator {
   constructor(
     private mapData: MapData,
     private forestData: ForestData,
+    private riverFlowData: RiverFlowData,
     seed: number
   ) {
     this.noise1 = createNoise2D(mulberry32(seed));
@@ -49,7 +51,9 @@ export class LocalMapGenerator {
     this.capDensity(work, 0.85, wx, wy);
     this.carveTrails(work, wx, wy);
     this.applyClumping(work, 2, wx, wy);
-    return this.trimBorder(work);
+    const result = this.trimBorder(work);
+    this.overlayStreams(result, wx, wy);
+    return result;
   }
 
   private buildDensityGrid(wx: number, wy: number): number[][] {
@@ -308,5 +312,188 @@ export class LocalMapGenerator {
       result.push(work[y].slice(BORDER, BORDER + TILE_SIZE));
     }
     return result;
+  }
+
+  private hashCoord(a: number, b: number, c: number, d: number): number {
+    let h = a * 374761393 + b * 668265263 + c * 1274126177 + d;
+    h = (h ^ (h >> 13)) * 1274126177;
+    h = h ^ (h >> 16);
+    return Math.abs(h);
+  }
+
+  private getCrossingPoint(wx1: number, wy1: number, wx2: number, wy2: number, seed: number): number {
+    const h = this.hashCoord(
+      Math.min(wx1, wx2), Math.max(wx1, wx2),
+      Math.min(wy1, wy2), Math.max(wy1, wy2) + seed
+    );
+    return (h % 33) + 5;
+  }
+
+  private computeLocalWidth(wx: number, wy: number): number {
+    const flowInfo = this.riverFlowData.getFlow(wx, wy);
+    if (!flowInfo) return 1;
+    const normalized = flowInfo.flow / flowInfo.maxFlow;
+    return Math.max(1, Math.round(Math.sqrt(normalized) * 20));
+  }
+
+  private getStreamEntryExitPoints(wx: number, wy: number): Array<{ x: number; y: number; side: string }> {
+    const points: Array<{ x: number; y: number; side: string }> = [];
+    const RIVER_SEED = 99997;
+
+    const neighbors: Array<{ dx: number; dy: number; side: string }> = [
+      { dx: 0, dy: -1, side: 'north' },
+      { dx: 1, dy: 0, side: 'east' },
+      { dx: 0, dy: 1, side: 'south' },
+      { dx: -1, dy: 0, side: 'west' },
+    ];
+
+    for (const { dx, dy, side } of neighbors) {
+      const nx = wx + dx;
+      const ny = wy + dy;
+      if (this.riverFlowData.isRiver(nx, ny)) {
+        if (side === 'north' || side === 'south') {
+          const cx = this.getCrossingPoint(wx, wy, nx, ny, RIVER_SEED);
+          const cy = side === 'north' ? 0 : TILE_SIZE - 1;
+          points.push({ x: cx, y: cy, side });
+        } else {
+          const cy = this.getCrossingPoint(wx, wy, nx, ny, RIVER_SEED);
+          const cx = side === 'west' ? 0 : TILE_SIZE - 1;
+          points.push({ x: cx, y: cy, side });
+        }
+      }
+    }
+
+    return points;
+  }
+
+  private midpointDisplace(
+    points: Array<{ x: number; y: number }>,
+    rng: () => number,
+    amplitude: number,
+    depth: number
+  ): Array<{ x: number; y: number }> {
+    if (depth <= 0 || points.length < 2) return points;
+
+    const result: Array<{ x: number; y: number }> = [points[0]];
+    for (let i = 0; i < points.length - 1; i++) {
+      const a = points[i];
+      const b = points[i + 1];
+      const mx = (a.x + b.x) / 2;
+      const my = (a.y + b.y) / 2;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len < 2) {
+        result.push(b);
+        continue;
+      }
+      const nx = -dy / len;
+      const ny = dx / len;
+      const disp = (rng() - 0.5) * amplitude;
+      result.push({ x: mx + nx * disp, y: my + ny * disp });
+      result.push(b);
+    }
+
+    return this.midpointDisplace(result, rng, amplitude * 0.5, depth - 1);
+  }
+
+  private rasterizePath(
+    grid: string[][],
+    path: Array<{ x: number; y: number }>,
+    width: number
+  ): void {
+    const halfW = width / 2;
+    for (let i = 0; i < path.length - 1; i++) {
+      const a = path[i];
+      const b = path[i + 1];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      const steps = Math.max(1, Math.ceil(len));
+      for (let s = 0; s <= steps; s++) {
+        const t = s / steps;
+        const cx = a.x + dx * t;
+        const cy = a.y + dy * t;
+        const r = Math.ceil(halfW);
+        for (let oy = -r; oy <= r; oy++) {
+          for (let ox = -r; ox <= r; ox++) {
+            if (ox * ox + oy * oy <= halfW * halfW) {
+              const px = Math.round(cx + ox);
+              const py = Math.round(cy + oy);
+              if (px >= 0 && px < TILE_SIZE && py >= 0 && py < TILE_SIZE) {
+                grid[py][px] = '=';
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private overlayStreams(grid: string[][], wx: number, wy: number): void {
+    if (!this.riverFlowData.isRiver(wx, wy)) return;
+
+    const width = this.computeLocalWidth(wx, wy);
+    const points = this.getStreamEntryExitPoints(wx, wy);
+    const rng = mulberry32(wx * 13337 + wy * 7919 + 42424);
+
+    if (points.length === 0) {
+      const cx = 15 + Math.floor(rng() * 13);
+      const cy = 15 + Math.floor(rng() * 13);
+      const r = Math.max(1, Math.floor(width / 2));
+      for (let oy = -r; oy <= r; oy++) {
+        for (let ox = -r; ox <= r; ox++) {
+          if (ox * ox + oy * oy <= r * r) {
+            const px = cx + ox;
+            const py = cy + oy;
+            if (px >= 0 && px < TILE_SIZE && py >= 0 && py < TILE_SIZE) {
+              grid[py][px] = '=';
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    if (points.length === 1) {
+      const entry = points[0];
+      const cx = TILE_SIZE / 2 + (rng() - 0.5) * 10;
+      const cy = TILE_SIZE / 2 + (rng() - 0.5) * 10;
+      const amplitude = Math.max(3, 15 / Math.max(1, width));
+      const path = this.midpointDisplace(
+        [{ x: entry.x, y: entry.y }, { x: cx, y: cy }],
+        rng, amplitude, 3
+      );
+      this.rasterizePath(grid, path, width);
+      return;
+    }
+
+    const withFlow = points.map(p => {
+      const dx = p.side === 'east' ? 1 : p.side === 'west' ? -1 : 0;
+      const dy = p.side === 'south' ? 1 : p.side === 'north' ? -1 : 0;
+      const nflow = this.riverFlowData.getFlow(wx + dx, wy + dy);
+      return { ...p, neighborFlow: nflow ? nflow.flow : 0 };
+    });
+    withFlow.sort((a, b) => b.neighborFlow - a.neighborFlow);
+
+    const amplitude = Math.max(3, 15 / Math.max(1, width));
+    const mainPath = this.midpointDisplace(
+      [{ x: withFlow[0].x, y: withFlow[0].y }, { x: withFlow[1].x, y: withFlow[1].y }],
+      rng, amplitude, 3
+    );
+    this.rasterizePath(grid, mainPath, width);
+
+    for (let i = 2; i < withFlow.length; i++) {
+      const p = withFlow[i];
+      const mid = mainPath[Math.floor(mainPath.length / 2)];
+      const nflow = this.riverFlowData.getFlow(wx + (p.side === 'east' ? 1 : p.side === 'west' ? -1 : 0),
+                                                wy + (p.side === 'south' ? 1 : p.side === 'north' ? -1 : 0));
+      const tribWidth = nflow ? Math.max(1, Math.round(Math.sqrt(nflow.flow / nflow.maxFlow) * 20)) : 1;
+      const tribPath = this.midpointDisplace(
+        [{ x: p.x, y: p.y }, { x: mid.x, y: mid.y }],
+        rng, amplitude, 3
+      );
+      this.rasterizePath(grid, tribPath, tribWidth);
+    }
   }
 }

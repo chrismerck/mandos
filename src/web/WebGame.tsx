@@ -9,6 +9,7 @@ import { RegionData } from '../core/data/RegionData.js';
 import { MountainData } from '../core/data/MountainData.js';
 import { PoiRiverData } from '../core/data/PoiRiverData.js';
 import { ForestData } from '../core/data/ForestData.js';
+import { RiverFlowData } from '../core/data/RiverFlowData.js';
 import { Position } from '../core/components/Position.js';
 import { Renderable } from '../core/components/Renderable.js';
 import { Player } from '../core/components/Player.js';
@@ -42,6 +43,7 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
   const [renderSystem] = useState(() => new RenderSystem(viewportSystem, mountainData));
   const [regionDisplaySystem] = useState(() => new RegionDisplaySystem(regionData, poiRiverData));
   const [forestData] = useState(() => new ForestData(dataLoader));
+  const [riverFlowData] = useState(() => new RiverFlowData(dataLoader));
   const [localMapCache] = useState(() => new LocalMapCache());
   const [viewMode, setViewMode] = useState<'world' | 'local'>('world');
   const viewModeRef = useRef<'world' | 'local'>('world');
@@ -198,8 +200,9 @@ export const WebGame: React.FC<WebGameProps> = ({ mapFile }) => {
         await mountainData.loadFromFile('middle_earth_mountains.bin');
         await poiRiverData.loadFromFile('middle_earth_poi_rivers.bin');
         await forestData.loadFromFile('middle_earth_forests.bin');
+        await riverFlowData.loadFromFile('middle_earth_river_flow.bin');
 
-        const localGenerator = new LocalMapGenerator(mapData, forestData, 42);
+        const localGenerator = new LocalMapGenerator(mapData, forestData, riverFlowData, 42);
         const localViewportSys = new LocalViewportSystem(localMapCache);
         const localMovementSys = new LocalMovementSystem(inputSystem, localMapCache, localGenerator);
         const localRenderSys = new LocalRenderSystem(localViewportSys);

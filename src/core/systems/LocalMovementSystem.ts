@@ -50,12 +50,15 @@ export class LocalMovementSystem extends System {
     const destTile = grid[newLy][newLx];
     if (destTile === 'T' || destTile === '#' || destTile === '=') return;
 
+    const changedTile = newWx !== lp.wx || newWy !== lp.wy;
     lp.lx = newLx;
     lp.ly = newLy;
     lp.wx = newWx;
     lp.wy = newWy;
 
-    this.ensureNeighborsGenerated(newWx, newWy);
+    if (changedTile) {
+      this.ensureNeighborsGenerated(newWx, newWy);
+    }
   }
 
   ensureGenerated(wx: number, wy: number): void {

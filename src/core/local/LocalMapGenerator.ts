@@ -56,17 +56,16 @@ export class LocalMapGenerator {
     localY: number,
     densityGrid: DensityEntry[][]
   ): DensityEntry {
-    const fx = (localX + BORDER) / (WORK_SIZE - 1);
-    const fy = (localY + BORDER) / (WORK_SIZE - 1);
+    const u = localX / TILE_SIZE;
+    const v = localY / TILE_SIZE;
 
-    const gx = fx * 2;
-    const gy = fy * 2;
+    let ix: number, tx: number;
+    if (u < 0.5) { ix = 0; tx = u + 0.5; }
+    else         { ix = 1; tx = u - 0.5; }
 
-    const ix = Math.min(Math.floor(gx), 1);
-    const iy = Math.min(Math.floor(gy), 1);
-
-    const tx = gx - ix;
-    const ty = gy - iy;
+    let iy: number, ty: number;
+    if (v < 0.5) { iy = 0; ty = v + 0.5; }
+    else         { iy = 1; ty = v - 0.5; }
 
     const d00 = densityGrid[iy][ix];
     const d10 = densityGrid[iy][ix + 1];
